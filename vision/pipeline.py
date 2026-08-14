@@ -95,7 +95,7 @@ class VisionPipeline:
 
         # Auto-reset alarm when outside Scenario 2 hazard time (t < 20.0 or t >= 35.0)
         if not self.safety_engine.manual_e_stop:
-            if (t_curr < 20.0 or t_curr >= 35.0) and self.safety_engine.alarm_latched:
+            if (t_curr < 20.0 or t_curr >= 35.0 or (20.0 <= t_curr < 28.5)) and self.safety_engine.alarm_latched:
                 self.safety_engine.reset_alarm()
 
         # 1. Compute Ground-Truth Vehicle Coordinates based on Scenario physics
@@ -132,10 +132,11 @@ class VisionPipeline:
             car_w, car_h = 430, 210
             if st < 3.5:
                 car_x = int(-car_w + (st / 3.5) * (340 + car_w))
-            elif 3.5 <= st < 7.0:
+            elif 3.5 <= st < 8.5:
                 car_x = 340
             else:
-                disp_val = min(1.0, (st - 7.0) / 2.5) * 70.0
+                # Driver moves forward prematurely while fueling!
+                disp_val = min(1.0, (st - 8.5) / 2.0) * 70.0
                 car_x = int(340 + disp_val)
             car_y = 360
 
@@ -145,7 +146,8 @@ class VisionPipeline:
             if 2.0 <= st < 14.5:
                 detected_plate_text = "1234 IE-7"
 
-            if 3.5 <= st < 15.0:
+            # Nozzle inserted only after vehicle has parked and settled (st >= 5.0)
+            if 5.0 <= st < 15.0:
                 nozzle_in_tank = True
                 hatch = (car_x + int(car_w * 0.82), car_y + int(car_h * 0.48))
                 nozzle_bbox = (hatch[0] - 14, hatch[1] - 14, hatch[0] + 14, hatch[1] + 14)

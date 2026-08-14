@@ -232,7 +232,7 @@ class SyntheticSceneEngine:
         px1, py1 = self.px1, self.py1
         pump_dock = self.pump_dock
 
-        # Scenario 1: 0 - 20s
+        # Scenario 1: 0 - 20s (Zero-Click Success: 7777 AB-7)
         if 0.0 <= t < 20.0:
             car_w, car_h = 420, 200
             plate, model, car_color = "7777 AB-7", "Passat B8", (140, 80, 40)
@@ -257,22 +257,32 @@ class SyntheticSceneEngine:
 
             frame = self.draw_scenario_badge(frame, f"СЦЕНАРИЙ 1 [0-20с]: Zero-Click Заправка (7777 AB-7, 30.0 л) | t={t:.1f}c", accent_color_bgr=(0, 230, 118))
 
-        # Scenario 2: 20 - 35s
+        # Scenario 2: 20 - 35s (Hose Tear Risk: 1234 IE-7)
         elif 20.0 <= t < 35.0:
             st = t - 20.0
             car_w, car_h = 430, 210
             plate, model, car_color = "1234 IE-7", "Geely Tugella", (60, 60, 180)
             if st < 3.5:
+                # 1. Car arrives from left to fueling bay
                 car_x = int(-car_w + (st / 3.5) * (340 + car_w))
                 frame = self.draw_vehicle(frame, car_x, 360, car_w, car_h, plate, car_color, model)
-            elif 3.5 <= st < 7.0:
+            elif 3.5 <= st < 5.0:
+                # 2. Car stationary at pump, preparing nozzle
+                car_x = 340
+                frame = self.draw_vehicle(frame, car_x, 360, car_w, car_h, plate, car_color, model)
+                frame = self.draw_text_pil(frame, "ПОДКЛЮЧЕНИЕ ПИСТОЛЕТА...", (px1 + 35, py1 + 225), font_size=15, color_bgr=(0, 200, 255), bold=True)
+            elif 5.0 <= st < 8.5:
+                # 3. Nozzle in tank, normal fueling in progress (stationary, no alarm)
                 car_x = 340
                 frame = self.draw_vehicle(frame, car_x, 360, car_w, car_h, plate, car_color, model)
                 hatch = (car_x + int(car_w * 0.82), 360 + int(car_h * 0.48))
                 self.draw_hose_and_nozzle(frame, pump_dock[0], pump_dock[1], hatch[0], hatch[1], is_inserted=True)
-                frame = self.draw_text_pil(frame, "ИДЕТ НАЛИВ ТОПЛИВА...", (px1 + 35, py1 + 225), font_size=16, color_bgr=(0, 255, 0), bold=True)
+                fuel_progress = min(1.0, (st - 5.0) / 3.0)
+                liters = fuel_progress * 12.0
+                frame = self.draw_text_pil(frame, f"ИДЕТ НАЛИВ: {liters:.1f} Л", (px1 + 35, py1 + 225), font_size=16, color_bgr=(0, 255, 0), bold=True)
             else:
-                move_progress = min(1.0, (st - 7.0) / 2.5)
+                # 4. Driver accelerates forward while nozzle is still in tank -> EMERGENCY ALARM!
+                move_progress = min(1.0, (st - 8.5) / 2.0)
                 disp = move_progress * 70.0
                 car_x = int(340 + disp)
                 frame = self.draw_vehicle(frame, car_x, 360, car_w, car_h, plate, car_color, model)
@@ -284,7 +294,7 @@ class SyntheticSceneEngine:
 
             frame = self.draw_scenario_badge(frame, f"СЦЕНАРИЙ 2 [20-35с]: РИСК ОБРЫВА ШЛАНГА! Попытка уезда (1234 IE-7) | t={t:.1f}c", accent_color_bgr=(0, 0, 240))
 
-        # Scenario 3: 35 - 50s
+        # Scenario 3: 35 - 50s (Guest Mode: 5678 MH-7)
         else:
             st = t - 35.0
             car_w, car_h = 410, 195
