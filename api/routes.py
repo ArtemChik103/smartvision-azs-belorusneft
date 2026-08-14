@@ -276,7 +276,7 @@ async def video_feed(request: Request):
                             b"--frame\r\n"
                             b"Content-Type: image/jpeg\r\n\r\n" + jpeg + b"\r\n"
                         )
-                await asyncio.sleep(0.045)  # ~22 FPS smooth cloud streaming
+                await asyncio.sleep(0.033)  # 30 FPS smooth real-time stream
         except (asyncio.CancelledError, Exception):
             pass
 

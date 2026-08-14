@@ -52,7 +52,7 @@ async def video_pipeline_worker(app: FastAPI):
         return
 
     logger.info("Video processing worker loop started.")
-    fps = 25
+    fps = settings.VIDEO_FPS
     frame_interval = 1.0 / fps
     last_alarm_logged = 0.0
     worker_frame_idx = 0
@@ -118,8 +118,8 @@ async def video_pipeline_worker(app: FastAPI):
                     fsm.transition_to(FuelingState.NOZZLE_RETURNED)
                     await fsm.complete_session()
                 else:
-                    # Increment fuel dispensed (~3.5 L/s demo flow rate)
-                    fsm.update_fuel_flow(delta_liters=0.14)
+                    # Increment fuel dispensed (~3.6 L/s demo flow rate at 30 FPS)
+                    fsm.update_fuel_flow(delta_liters=0.12)
             elif fsm.state == FuelingState.SESSION_COMPLETE:
                 # If car departs (no plate or track empty for > 2 sec), return to IDLE
                 if time.time() - fsm.state_entry_time > 3.5:
