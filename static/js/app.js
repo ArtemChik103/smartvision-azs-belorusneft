@@ -548,7 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
             timelineTimeText.textContent = `00:${sec < 10 ? '0' + sec : sec} / 00:50`;
         }
 
-        // Audio Triggers on State Transition
+        // Audio Triggers & Real-Time Audit Log Refreshes on State Transition
         if (state !== lastKnownState) {
             if (state === 'PLATE_IDENTIFIED' && session?.is_drive_and_pay) {
                 window.soundAlerts.playPlateIdentified();
@@ -556,6 +556,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.soundAlerts.playFuelStart();
             } else if (state === 'SESSION_COMPLETE') {
                 window.soundAlerts.playFuelComplete();
+                loadAuditLogs();
+            } else if (state === 'ALARM_LOCKDOWN') {
+                loadAuditLogs();
+            } else if (state === 'IDLE' && lastKnownState === 'SESSION_COMPLETE') {
+                loadAuditLogs();
             }
             lastKnownState = state;
         }
@@ -563,6 +568,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (telemetry.is_alarm && !isAlarmActive) {
             window.soundAlerts.playEmergencyAlarm();
             isAlarmActive = true;
+            loadAuditLogs();
         } else if (!telemetry.is_alarm && isAlarmActive) {
             window.soundAlerts.stopEmergencyAlarm();
             isAlarmActive = false;
@@ -810,17 +816,24 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadAuditLogs() {
         try {
             const [sessRes, incRes] = await Promise.all([
-                fetch('/api/sessions/recent'),
-                fetch('/api/incidents/recent'),
+                fetch('/api/sessions'),
+                fetch('/api/incidents'),
             ]);
 
             if (sessRes.ok) {
                 const sessData = await sessRes.json();
-                cachedSessions = sessData.sessions || [];
+                const rawSessions = Array.isArray(sessData) ? sessData : (sessData.sessions || []);
+                cachedSessions = rawSessions.map(s => ({
+                    ...s,
+                    plate_number: s.vehicle_plate || s.plate_number || '—',
+                    is_drive_and_pay: s.is_zero_click !== undefined ? s.is_zero_click : (s.is_drive_and_pay || false),
+                    dispensed_liters: typeof s.dispensed_liters === 'number' ? s.dispensed_liters : parseFloat(s.dispensed_liters || 0),
+                    total_cost: typeof s.total_cost === 'number' ? s.total_cost : parseFloat(s.total_cost || 0),
+                }));
             }
             if (incRes.ok) {
                 const incData = await incRes.json();
-                cachedIncidents = incData.incidents || [];
+                cachedIncidents = Array.isArray(incData) ? incData : (incData.incidents || []);
             }
 
             renderFilteredAuditLogs();
@@ -828,6 +841,14 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Failed to load audit logs:', e);
         }
     }
+
+    // Auto-refresh audit logs every 3s when audit tab is visible
+    setInterval(() => {
+        const auditTab = document.getElementById('tab-audit');
+        if (auditTab && !auditTab.classList.contains('hidden')) {
+            loadAuditLogs();
+        }
+    }, 3000);
 
     function renderFilteredAuditLogs() {
         const searchVal = (document.getElementById('auditSearchInput')?.value || '').toLowerCase();

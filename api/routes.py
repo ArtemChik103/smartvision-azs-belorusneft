@@ -39,6 +39,7 @@ async def get_system_status(request: Request) -> Dict[str, Any]:
 
 
 @router.get("/sessions")
+@router.get("/sessions/recent")
 async def get_sessions(
     limit: int = Query(25, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -53,6 +54,7 @@ async def get_sessions(
             "id": s.id,
             "session_uuid": s.session_uuid,
             "vehicle_plate": s.vehicle_plate,
+            "plate_number": s.vehicle_plate,
             "fuel_type": s.fuel_type,
             "target_liters": s.target_liters,
             "dispensed_liters": s.dispensed_liters,
@@ -61,6 +63,8 @@ async def get_sessions(
             "status": s.status,
             "payment_status": s.payment_status,
             "is_zero_click": s.is_zero_click,
+            "is_drive_and_pay": s.is_zero_click,
+            "receipt_number": s.receipt_number,
             "created_at": s.created_at.strftime("%Y-%m-%d %H:%M:%S") if s.created_at else "",
         }
         for s in sessions
@@ -68,6 +72,7 @@ async def get_sessions(
 
 
 @router.get("/incidents")
+@router.get("/incidents/recent")
 async def get_incidents(
     limit: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
