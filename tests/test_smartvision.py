@@ -17,12 +17,23 @@ from vision.tracker import CentroidTracker
 from vision.safety_engine import SafetyEngine
 from core.roi_calculator import ROICalculator, ROIParams
 from core.fsm import FuelingFSM, FuelingState
-from database.db_session import init_db
+from database.db_session import init_db, engine
 from main import app
 
 
+@pytest.fixture(autouse=True, scope="session")
+def cleanup_resources():
+    yield
+    try:
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(engine.dispose())
+        loop.close()
+    except Exception:
+        pass
+
+
 def test_anpr_regex_and_fuzzy():
-    engine = ANPREngine(use_gpu=False)
+    engine = ANPREngine(use_gpu=False, load_ocr=False)
 
     # Valid standard civilian plates
     valid_civilian = ["7777 AB-7", "1234 IE-7", "0001 MI-5", "9999 EK-1"]
