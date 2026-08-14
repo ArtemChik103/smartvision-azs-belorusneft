@@ -2,6 +2,7 @@
 SmartVision AZS — Belorusneft Computer Vision & Telemetry System.
 FastAPI Application Entry Point with Asynchronous Processing Loop.
 """
+import os
 import sys
 import time
 import asyncio
@@ -200,9 +201,10 @@ async def root():
 
 
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", settings.PORT))
     uvicorn.run(
         "main:app",
-        host=settings.HOST,
-        port=settings.PORT,
+        host="0.0.0.0",
+        port=port,
         reload=False,
     )
