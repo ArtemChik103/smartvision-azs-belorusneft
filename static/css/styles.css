@@ -305,7 +305,7 @@ input[type=range]::-webkit-slider-thumb:hover {
     header, main, nav, footer, 
     #tab-operator, #tab-audit, #tab-roi,
     .scenario-btn, .tactile-btn, .hud-toggle-btn,
-    #snapshotModal, #receiptModal,
+    #snapshotModal,
     .print-hide {
         display: none !important;
     }
@@ -314,7 +314,7 @@ input[type=range]::-webkit-slider-thumb:hover {
         display: block !important;
     }
 
-    /* Modal Reset for A4 Page */
+    /* Modal Overlay Reset */
     .modal-overlay {
         position: static !important;
         background: transparent !important;
@@ -326,11 +326,57 @@ input[type=range]::-webkit-slider-thumb:hover {
         max-width: 100% !important;
         padding: 0 !important;
         margin: 0 !important;
-        align-items: flex-start !important;
-        justify-content: flex-start !important;
     }
 
-    #teoModal {
+    /* ========================================================================= */
+    /* Print Mode 1: Electronic Fiscal Receipt (data-print-mode="receipt")      */
+    /* ========================================================================= */
+    body[data-print-mode="receipt"] #teoModal {
+        display: none !important;
+    }
+
+    body[data-print-mode="receipt"] #receiptModal {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+    }
+
+    body[data-print-mode="receipt"] .receipt-paper {
+        margin: 0 auto !important;
+        max-width: 420px !important;
+        border: 2px dashed #64748B !important;
+        border-radius: 8px !important;
+        box-shadow: none !important;
+        background: #FFFFFF !important;
+        color: #0F172A !important;
+        padding: 24px !important;
+    }
+
+    body[data-print-mode="receipt"] .receipt-paper * {
+        color: #0F172A !important;
+    }
+
+    body[data-print-mode="receipt"] .receipt-paper .bg-\[\#00843D\] {
+        background-color: #00843D !important;
+        color: #FFFFFF !important;
+    }
+
+    body[data-print-mode="receipt"] .receipt-paper .text-\[\#00843D\] {
+        color: #00843D !important;
+        font-weight: 800 !important;
+    }
+
+    /* ========================================================================= */
+    /* Print Mode 2: Executive TEO Report (Default or data-print-mode="teo")    */
+    /* ========================================================================= */
+    body:not([data-print-mode="receipt"]) #receiptModal {
+        display: none !important;
+    }
+
+    body:not([data-print-mode="receipt"]) #teoModal {
         display: block !important;
         position: static !important;
         width: 100% !important;
@@ -339,7 +385,7 @@ input[type=range]::-webkit-slider-thumb:hover {
         padding: 0 !important;
     }
 
-    #teoModal > div {
+    body:not([data-print-mode="receipt"]) #teoModal > div {
         max-width: 100% !important;
         width: 100% !important;
         background: #FFFFFF !important;
@@ -353,7 +399,7 @@ input[type=range]::-webkit-slider-thumb:hover {
         margin: 0 auto !important;
     }
 
-    /* Typography & High-Contrast Corporate Palette for Print */
+    /* Typography & High-Contrast Corporate Palette for TEO Print */
     #teoModal h3 {
         color: #00843D !important;
         font-size: 16pt !important;

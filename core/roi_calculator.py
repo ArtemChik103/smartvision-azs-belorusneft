@@ -29,7 +29,7 @@ class ROIParams(BaseModel):
         default=settings.DEFAULT_RETAIL_MARGIN_PCT, ge=5.0, le=60.0, description="Торговая наценка / маржинальность ритейла (%)"
     )
     system_capex: float = Field(
-        default=settings.DEFAULT_SYSTEM_CAPEX, ge=10000.0, le=5000000.0, description="Капитальные затраты на внедрение системы (BYN)"
+        default=settings.DEFAULT_SYSTEM_CAPEX, ge=100.0, le=5000000.0, description="Капитальные затраты на внедрение системы (BYN)"
     )
     annual_opex_pct: float = Field(
         default=8.0, ge=0.0, le=30.0, description="Ежегодные затраты на поддержку и серверы (% от Capex)"

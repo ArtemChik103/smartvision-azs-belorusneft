@@ -266,6 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('receiptBonus').textContent = `+${bonusNum} БОНУСОВ`;
 
         drawReceiptQr(receiptId);
+        document.body.setAttribute('data-print-mode', 'receipt');
         receiptModal?.classList.add('open');
     };
 
@@ -273,14 +274,26 @@ document.addEventListener('DOMContentLoaded', () => {
         openReceiptBtn.addEventListener('click', () => window.openReceiptModal());
     }
 
+    const btnPrintReceiptPdf = document.getElementById('btnPrintReceiptPdf');
+    if (btnPrintReceiptPdf) {
+        btnPrintReceiptPdf.addEventListener('click', () => {
+            document.body.setAttribute('data-print-mode', 'receipt');
+            window.print();
+        });
+    }
+
     if (closeReceiptBtn) {
         closeReceiptBtn.addEventListener('click', () => {
+            document.body.removeAttribute('data-print-mode');
             receiptModal?.classList.remove('open');
         });
     }
     if (receiptModal) {
         receiptModal.addEventListener('click', (e) => {
-            if (e.target === receiptModal) receiptModal.classList.remove('open');
+            if (e.target === receiptModal) {
+                document.body.removeAttribute('data-print-mode');
+                receiptModal.classList.remove('open');
+            }
         });
     }
 
@@ -363,11 +376,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.openTeoModal = () => {
         window.updateTeoValues();
+        document.body.setAttribute('data-print-mode', 'teo');
         teoModal?.classList.add('open');
     };
 
     window.addEventListener('beforeprint', () => {
-        window.updateTeoValues();
+        if (document.body.getAttribute('data-print-mode') !== 'receipt') {
+            window.updateTeoValues();
+        }
     });
 
     if (exportReportBtn) {
@@ -378,18 +394,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (closeTeoBtn) {
         closeTeoBtn.addEventListener('click', () => {
+            document.body.removeAttribute('data-print-mode');
             teoModal?.classList.remove('open');
         });
     }
 
     if (teoModal) {
         teoModal.addEventListener('click', (e) => {
-            if (e.target === teoModal) teoModal.classList.remove('open');
+            if (e.target === teoModal) {
+                document.body.removeAttribute('data-print-mode');
+                teoModal.classList.remove('open');
+            }
         });
     }
 
     if (btnPrintTeoPdf) {
         btnPrintTeoPdf.addEventListener('click', () => {
+            document.body.setAttribute('data-print-mode', 'teo');
             window.print();
         });
     }

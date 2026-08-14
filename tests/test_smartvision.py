@@ -182,7 +182,7 @@ async def test_api_endpoints():
         data = res_roi.json()
         assert data["summary"]["annual_hose_savings"] == 192000.0
 
-        # ROI Export Excel (.xlsx)
+        # ROI Export Excel (.xlsx) - Full Network
         res_excel = await ac.post(
             "/api/roi/export-excel",
             json={
@@ -196,3 +196,19 @@ async def test_api_endpoints():
         assert res_excel.status_code == 200
         assert "spreadsheetml" in res_excel.headers["content-type"]
         assert len(res_excel.content) > 1000
+
+        # ROI Export Excel (.xlsx) - Pilot Scale (1 Station, 6500 BYN Capex)
+        res_excel_pilot = await ac.post(
+            "/api/roi/export-excel",
+            json={
+                "station_count": 1,
+                "daily_traffic": 750,
+                "hose_incidents_prevented": 1,
+                "hose_damage_cost": 1200.0,
+                "retail_growth_pct": 4.0,
+                "system_capex": 6500.0,
+            },
+        )
+        assert res_excel_pilot.status_code == 200
+        assert "spreadsheetml" in res_excel_pilot.headers["content-type"]
+        assert len(res_excel_pilot.content) > 1000

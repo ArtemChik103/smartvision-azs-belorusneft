@@ -603,7 +603,7 @@
     <div id="receiptModal" class="modal-overlay">
         <div class="receipt-paper p-6 relative">
             <!-- Close Button -->
-            <button id="closeReceiptBtn" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-zinc-200 hover:bg-zinc-300 text-zinc-700 flex items-center justify-center font-bold text-sm">
+            <button id="closeReceiptBtn" class="print-hide absolute top-3 right-3 w-8 h-8 rounded-full bg-zinc-200 hover:bg-zinc-300 text-zinc-700 flex items-center justify-center font-bold text-sm">
                 ✕
             </button>
 
@@ -653,9 +653,9 @@
             </div>
 
             <!-- Action Buttons -->
-            <div class="mt-4 flex gap-2">
-                <button onclick="window.print()" class="flex-1 py-2 rounded-lg bg-[#00843D] hover:bg-[#005F2B] text-white font-bold text-xs uppercase tracking-wide">
-                    Распечатать
+            <div class="print-hide mt-4 flex gap-2">
+                <button id="btnPrintReceiptPdf" class="flex-1 py-2.5 rounded-xl bg-[#00843D] hover:bg-[#005F2B] text-white font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 shadow-lg shadow-green-900/30">
+                    <span>📄 Печать чека / PDF</span>
                 </button>
             </div>
         </div>
