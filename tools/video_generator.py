@@ -1,9 +1,9 @@
 """
-Synthetic Test Video Generator for SmartVision AZS.
-Generates 1280x720 30FPS MP4 video covering 3 scenarios with full Cyrillic support (via Pillow):
-1. Zero-Click Drive&Pay Success (7777 AB-7, 30L dispense, auto-settlement).
-2. Hose Tear Prevention Alarm (1234 IE-7, nozzle inserted, premature movement -> ALARM).
-3. Guest Mode (5678 MH-7, unregistered vehicle -> terminal payment).
+Synthetic Test Video Generator for SmartVision AZS — Belorusneft.
+High-resolution 1280x720 30FPS MP4 video covering 3 scenarios with accurate physics and TrueType fonts:
+1. Zero-Click Drive&Pay Success (7777 AB-7, 30L dispense, auto-settlement, departure).
+2. Hose Tear Prevention Alarm (1234 IE-7, nozzle in tank, driver accelerates forward -> hose stretches taut -> instant E-STOP).
+3. Guest Mode (5678 MH-7, non-registered vehicle -> terminal authorization -> 15L dispense -> cashier settlement -> departure).
 """
 import math
 import sys
@@ -23,7 +23,11 @@ from config import settings, DATA_DIR
 
 def get_font(size: int, bold: bool = False) -> ImageFont.ImageFont:
     """Get TrueType font with fallback."""
-    font_names = ["arialbd.ttf" if bold else "arial.ttf", "segoeuib.ttf" if bold else "segoeui.ttf", "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"]
+    font_names = [
+        "arialbd.ttf" if bold else "arial.ttf",
+        "segoeuib.ttf" if bold else "segoeui.ttf",
+        "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf",
+    ]
     for fn in font_names:
         try:
             return ImageFont.truetype(fn, size)
@@ -49,38 +53,57 @@ def draw_text_pil(
     draw = ImageDraw.Draw(pil_img)
     font = get_font(font_size, bold=bold)
 
-    # Convert BGR color to RGB
     color_rgb = (color_bgr[2], color_bgr[1], color_bgr[0])
     draw.text(pos, text, fill=color_rgb, font=font)
 
-    # Convert back to BGR numpy array
     return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+
+
+def draw_scenario_badge(
+    frame: np.ndarray,
+    text: str,
+    accent_color_bgr: Tuple[int, int, int] = (0, 204, 255),
+) -> np.ndarray:
+    """Render a clean, dedicated scenario subtitle banner that never overlaps with fuel column or curb."""
+    bx1, by1, bx2, by2 = 30, 132, 820, 172
+    # Background card
+    cv2.rectangle(frame, (bx1, by1), (bx2, by2), (24, 24, 27), -1)
+    cv2.rectangle(frame, (bx1, by1), (bx2, by2), (60, 65, 75), 1)
+    # Left accent strip
+    cv2.rectangle(frame, (bx1, by1), (bx1 + 6, by2), accent_color_bgr, -1)
+
+    frame = draw_text_pil(
+        frame,
+        text,
+        (bx1 + 16, by1 + 9),
+        font_size=15,
+        color_bgr=(255, 255, 255),
+        bold=True,
+    )
+    return frame
 
 
 def draw_belarus_plate(img: np.ndarray, x: int, y: int, w: int, h: int, text: str) -> np.ndarray:
     """Draw realistic Belarusian license plate with white background, black border, BY logo."""
-    # Plate background
     cv2.rectangle(img, (x, y), (x + w, y + h), (245, 245, 245), -1)
     cv2.rectangle(img, (x, y), (x + w, y + h), (20, 20, 20), 2)
 
-    # Left badge: Red-Green flag strip + BY
+    # Left flag badge
     badge_w = int(w * 0.15)
-    cv2.rectangle(img, (x + 2, y + 2), (x + badge_w, y + int(h * 0.48)), (30, 30, 200), -1)  # Red top
-    cv2.rectangle(img, (x + 2, y + int(h * 0.48)), (x + badge_w, y + h - 2), (30, 160, 40), -1)  # Green bottom
+    cv2.rectangle(img, (x + 2, y + 2), (x + badge_w, y + int(h * 0.48)), (30, 30, 200), -1)
+    cv2.rectangle(img, (x + 2, y + int(h * 0.48)), (x + badge_w, y + h - 2), (30, 160, 40), -1)
 
-    # BY text
     cv2.putText(
         img,
         "BY",
-        (x + 4, y + h - 5),
+        (x + 3, y + h - 5),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.38,
+        0.36,
         (255, 255, 255),
         1,
         cv2.LINE_AA,
     )
 
-    # Plate text (e.g. 7777 AB-7)
     font_scale = h * 0.024
     text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_DUPLEX, font_scale, 2)[0]
     text_x = x + badge_w + int((w - badge_w - text_size[0]) / 2)
@@ -104,22 +127,21 @@ def draw_fuel_station_background(width: int = 1280, height: int = 720) -> np.nda
     bg = np.zeros((height, width, 3), dtype=np.uint8)
 
     # 1. Concrete & Asphalt ground
-    bg[:] = (45, 48, 52)  # Dark slate asphalt
-    # Lane perspective lines
+    bg[:] = (45, 48, 52)
     cv2.line(bg, (0, 520), (width, 520), (70, 75, 80), 2)
     cv2.line(bg, (0, 700), (width, 700), (90, 95, 100), 2)
 
-    # Safety zebra markings on curb
+    # Safety zebra markings on curb (placed safely below scenario badge at y=180..205)
     for i in range(0, width, 80):
         cv2.fillPoly(
             bg,
             [
                 np.array(
                     [
-                        [i, 160],
-                        [i + 40, 160],
-                        [i + 20, 200],
-                        [i - 20, 200],
+                        [i, 180],
+                        [i + 40, 180],
+                        [i + 20, 208],
+                        [i - 20, 208],
                     ]
                 )
             ],
@@ -127,23 +149,22 @@ def draw_fuel_station_background(width: int = 1280, height: int = 720) -> np.nda
         )
 
     # 2. Canopy roof (Belorusneft Green #00843D)
-    cv2.rectangle(bg, (0, 0), (width, 140), (45, 110, 0), -1)  # BGR
+    cv2.rectangle(bg, (0, 0), (width, 115), (45, 110, 0), -1)
     # Corporate Yellow Accent Stripe (#FFCC00)
-    cv2.rectangle(bg, (0, 130), (width, 140), (0, 204, 255), -1)  # BGR
+    cv2.rectangle(bg, (0, 115), (width, 125), (0, 204, 255), -1)
 
     # Header text with proper Cyrillic
     bg = draw_text_pil(
         bg,
         "БЕЛОРУСНЕФТЬ  АЗС №42  •  СИСТЕМА SMARTVISION (ТРК 2)",
-        (50, 55),
-        font_size=28,
+        (50, 40),
+        font_size=26,
         color_bgr=(255, 255, 255),
         bold=True,
     )
 
     # 3. Fuel Dispenser Column (ТРК 2)
     px1, py1, px2, py2 = settings.PUMP_ZONE
-    # Column base
     cv2.rectangle(bg, (px1, py1), (px2, py2), (30, 32, 35), -1)
     cv2.rectangle(bg, (px1, py1), (px2, py2), (0, 180, 50), 3)
 
@@ -184,7 +205,6 @@ def draw_vehicle(
     model_name: str = "VW Passat",
 ) -> np.ndarray:
     """Draw realistic vehicle with shadow, windows, plate, and fuel cap."""
-    # Ground shadow
     shadow_pts = np.array(
         [
             [x - 20, y + h],
@@ -195,7 +215,6 @@ def draw_vehicle(
     )
     cv2.fillPoly(frame, [shadow_pts], (20, 20, 20))
 
-    # Car body
     body_pts = np.array(
         [
             [x + int(w * 0.05), y + int(h * 0.45)],
@@ -209,7 +228,6 @@ def draw_vehicle(
     cv2.fillPoly(frame, [body_pts], color)
     cv2.polylines(frame, [body_pts], True, (30, 30, 30), 2)
 
-    # Cabin / Windows
     glass_pts = np.array(
         [
             [x + int(w * 0.27), y + int(h * 0.18)],
@@ -221,7 +239,6 @@ def draw_vehicle(
     cv2.fillPoly(frame, [glass_pts], (60, 80, 95))
     cv2.polylines(frame, [glass_pts], True, (20, 20, 20), 2)
 
-    # Wheels
     r_wheel = int(h * 0.18)
     w1_center = (x + int(w * 0.22), y + int(h * 0.85))
     w2_center = (x + int(w * 0.78), y + int(h * 0.85))
@@ -230,7 +247,6 @@ def draw_vehicle(
     cv2.circle(frame, w2_center, r_wheel, (25, 25, 25), -1)
     cv2.circle(frame, w2_center, int(r_wheel * 0.55), (140, 140, 140), -1)
 
-    # Taillights
     cv2.rectangle(
         frame,
         (x + int(w * 0.92), y + int(h * 0.45)),
@@ -245,14 +261,13 @@ def draw_vehicle(
     cv2.circle(frame, (hatch_x, hatch_y), int(h * 0.08), (min(255, color[0] + 30), min(255, color[1] + 30), min(255, color[2] + 30)), -1)
     cv2.circle(frame, (hatch_x, hatch_y), int(h * 0.08), (20, 20, 20), 2)
 
-    # License plate at the rear
+    # License plate
     plate_w = int(w * 0.32)
     plate_h = int(h * 0.16)
     plate_px = x + int(w * 0.34)
     plate_py = y + int(h * 0.65)
     frame = draw_belarus_plate(frame, plate_px, plate_py, plate_w, plate_h, plate_text)
 
-    # Model badge
     frame = draw_text_pil(frame, model_name, (x + int(w * 0.35), y + int(h * 0.50)), font_size=15, color_bgr=(220, 220, 220))
     return frame
 
@@ -264,24 +279,33 @@ def draw_hose_and_nozzle(
     target_x: int,
     target_y: int,
     is_inserted: bool,
-    is_alarm: bool = False,
+    is_taut_alarm: bool = False,
 ):
-    """Render fuel hose curve and nozzle inserted in tank."""
-    ctrl_x = int((pump_x + target_x) / 2)
-    ctrl_y = max(pump_y, target_y) + 90
+    """Render fuel hose curve or stretched taut cable during drive-off alarm."""
+    if is_taut_alarm:
+        # Straight, taut stretched cable under dangerous tension
+        cv2.line(frame, (pump_x, pump_y), (target_x, target_y), (0, 0, 240), 8)
+        cv2.line(frame, (pump_x, pump_y), (target_x, target_y), (255, 255, 255), 2)
+        # Tension stress marker at connection point
+        cv2.circle(frame, (target_x, target_y), 16, (0, 0, 255), -1)
+        cv2.circle(frame, (target_x, target_y), 24, (0, 165, 255), 2)
+    else:
+        # Slack natural bezier sag
+        ctrl_x = int((pump_x + target_x) / 2)
+        ctrl_y = max(pump_y, target_y) + 85
 
-    pts = []
-    for t in np.linspace(0, 1, 25):
-        bx = int((1 - t) ** 2 * pump_x + 2 * (1 - t) * t * ctrl_x + t**2 * target_x)
-        by = int((1 - t) ** 2 * pump_y + 2 * (1 - t) * t * ctrl_y + t**2 * target_y)
-        pts.append([bx, by])
+        pts = []
+        for t in np.linspace(0, 1, 25):
+            bx = int((1 - t) ** 2 * pump_x + 2 * (1 - t) * t * ctrl_x + t**2 * target_x)
+            by = int((1 - t) ** 2 * pump_y + 2 * (1 - t) * t * ctrl_y + t**2 * target_y)
+            pts.append([bx, by])
 
-    hose_color = (20, 20, 20) if not is_alarm else (0, 0, 230)
-    cv2.polylines(frame, [np.array(pts)], False, hose_color, 7)
-    cv2.polylines(frame, [np.array(pts)], False, (60, 60, 60), 3)
+        cv2.polylines(frame, [np.array(pts)], False, (20, 20, 20), 7)
+        cv2.polylines(frame, [np.array(pts)], False, (70, 70, 70), 3)
 
+    # Nozzle tip
     nozzle_color = (0, 210, 255) if is_inserted else (180, 180, 180)
-    if is_alarm:
+    if is_taut_alarm:
         nozzle_color = (0, 0, 255)
 
     cv2.rectangle(frame, (target_x - 12, target_y - 12), (target_x + 12, target_y + 12), nozzle_color, -1)
@@ -305,7 +329,7 @@ def generate_synthetic_video(output_path: Optional[str] = None) -> str:
     px1, py1, px2, py2 = settings.PUMP_ZONE
     pump_dock = (px1 + 80, py1 + 350)
 
-    print(f"Generating synthetic video with Cyrillic Pillow font: {out_file} ({total_frames} frames)...")
+    print(f"Generating realistic synthetic video: {out_file} ({total_frames} frames)...")
 
     for f in range(total_frames):
         t = f / float(fps)
@@ -341,11 +365,12 @@ def generate_synthetic_video(output_path: Optional[str] = None) -> str:
                     )
                     fuel_progress = min(1.0, (t - 6.0) / 7.0)
                     liters = max(0.0, fuel_progress * 30.0)
+                    cost = liters * 2.46
                     frame = draw_text_pil(
                         frame,
-                        f"НАЛИВ: {liters:.1f} Л  (30.0 Л)",
-                        (px1 + 45, py1 + 225),
-                        font_size=18,
+                        f"НАЛИВ: {liters:.1f} Л  ({cost:.2f} BYN)",
+                        (px1 + 35, py1 + 225),
+                        font_size=16,
                         color_bgr=(0, 255, 0),
                         bold=True,
                     )
@@ -353,8 +378,8 @@ def generate_synthetic_video(output_path: Optional[str] = None) -> str:
                     frame = draw_text_pil(
                         frame,
                         "ОПЛАЧЕНО: 73.80 BYN",
-                        (px1 + 45, py1 + 225),
-                        font_size=17,
+                        (px1 + 35, py1 + 225),
+                        font_size=16,
                         color_bgr=(0, 255, 255),
                         bold=True,
                     )
@@ -364,17 +389,14 @@ def generate_synthetic_video(output_path: Optional[str] = None) -> str:
                 car_y = 360
                 frame = draw_vehicle(frame, car_x, car_y, car_w, car_h, plate, car_color, model)
 
-            frame = draw_text_pil(
+            frame = draw_scenario_badge(
                 frame,
-                f"СЦЕНАРИЙ 1 [0-20с]: Успешная Zero-Click заправка (7777 AB-7) | t={t:.1f}c",
-                (30, 160),
-                font_size=20,
-                color_bgr=(0, 255, 200),
-                bold=True,
+                f"СЦЕНАРИЙ 1 [0-20с]: Zero-Click Заправка (7777 AB-7, 30.0 л) | t={t:.1f}c",
+                accent_color_bgr=(0, 230, 118),
             )
 
         # =========================================================================
-        # SCENARIO 2: 20.0s - 35.0s (Hose Tear Risk Prevention: 1234 IE-7)
+        # SCENARIO 2: 20.0s - 35.0s (Hose Tear Prevention: 1234 IE-7)
         # =========================================================================
         elif 20.0 <= t < 35.0:
             st = t - 20.0
@@ -384,12 +406,14 @@ def generate_synthetic_video(output_path: Optional[str] = None) -> str:
             car_color = (60, 60, 180)
 
             if st < 3.5:
+                # Arriving from left to fueling bay
                 progress = st / 3.5
-                car_x = int(-car_w + progress * (350 + car_w))
+                car_x = int(-car_w + progress * (340 + car_w))
                 car_y = 360
                 frame = draw_vehicle(frame, car_x, car_y, car_w, car_h, plate, car_color, model)
-            elif 3.5 <= st < 7.5:
-                car_x, car_y = 350, 360
+            elif 3.5 <= st < 7.0:
+                # Parked at pump, nozzle inserted, fueling active
+                car_x, car_y = 340, 360
                 frame = draw_vehicle(frame, car_x, car_y, car_w, car_h, plate, car_color, model)
                 hatch_target = (car_x + int(car_w * 0.82), car_y + int(car_h * 0.48))
                 draw_hose_and_nozzle(
@@ -399,15 +423,26 @@ def generate_synthetic_video(output_path: Optional[str] = None) -> str:
                     hatch_target[0],
                     hatch_target[1],
                     is_inserted=True,
+                )
+                frame = draw_text_pil(
+                    frame,
+                    "ИДЕТ НАЛИВ ТОПЛИВА...",
+                    (px1 + 35, py1 + 225),
+                    font_size=16,
+                    color_bgr=(0, 255, 0),
+                    bold=True,
                 )
             else:
-                move_progress = (st - 7.5) / 7.5
-                displacement_px = min(60.0, move_progress * 80.0)
-                car_x = int(350 + displacement_px)
+                # DRIVER STARTS MOVING FORWARD (AWAY TO THE RIGHT) WITHOUT REMOVING NOZZLE!
+                move_progress = min(1.0, (st - 7.0) / 2.5)
+                # Vehicle pulls forward by 70px towards right exit
+                displacement_px = move_progress * 70.0
+                car_x = int(340 + displacement_px)
                 car_y = 360
                 frame = draw_vehicle(frame, car_x, car_y, car_w, car_h, plate, car_color, model)
 
                 hatch_target = (car_x + int(car_w * 0.82), car_y + int(car_h * 0.48))
+                # Hose gets stretched taut!
                 draw_hose_and_nozzle(
                     frame,
                     pump_dock[0],
@@ -415,19 +450,27 @@ def generate_synthetic_video(output_path: Optional[str] = None) -> str:
                     hatch_target[0],
                     hatch_target[1],
                     is_inserted=True,
-                    is_alarm=True,
+                    is_taut_alarm=True,
                 )
 
+                # Emergency shutdown prompt on pump LED
+                frame = draw_text_pil(
+                    frame,
+                    "НАСОС ЗАБЛОКИРОВАН!",
+                    (px1 + 35, py1 + 225),
+                    font_size=15,
+                    color_bgr=(0, 0, 255),
+                    bold=True,
+                )
+
+                # Flashing red emergency border
                 if int(st * 4) % 2 == 0:
                     cv2.rectangle(frame, (0, 0), (width, height), (0, 0, 255), 8)
 
-            frame = draw_text_pil(
+            frame = draw_scenario_badge(
                 frame,
-                f"СЦЕНАРИЙ 2 [20-35с]: ПРЕДОТВРАЩЕНИЕ ОБРЫВА ШЛАНГА (1234 IE-7) | t={t:.1f}c",
-                (30, 160),
-                font_size=20,
-                color_bgr=(0, 100, 255),
-                bold=True,
+                f"СЦЕНАРИЙ 2 [20-35с]: РИСК ОБРЫВА ШЛАНГА! Попытка уезда (1234 IE-7) | t={t:.1f}c",
+                accent_color_bgr=(0, 0, 240),
             )
 
         # =========================================================================
@@ -449,7 +492,9 @@ def generate_synthetic_video(output_path: Optional[str] = None) -> str:
                 car_x, car_y = 360, 360
                 frame = draw_vehicle(frame, car_x, car_y, car_w, car_h, plate, car_color, model)
                 hatch_target = (car_x + int(car_w * 0.82), car_y + int(car_h * 0.48))
+
                 if 5.0 <= st < 10.5:
+                    # Nozzle in tank & dispensing 15 L of АИ-92 (35.40 BYN)
                     draw_hose_and_nozzle(
                         frame,
                         pump_dock[0],
@@ -458,25 +503,51 @@ def generate_synthetic_video(output_path: Optional[str] = None) -> str:
                         hatch_target[1],
                         is_inserted=True,
                     )
+                    fuel_progress = min(1.0, (st - 5.0) / 4.5)
+                    liters = max(0.0, fuel_progress * 15.0)
+                    cost = liters * 2.36
+                    frame = draw_text_pil(
+                        frame,
+                        f"НАЛИВ: {liters:.1f} Л  ({cost:.2f} BYN)",
+                        (px1 + 35, py1 + 225),
+                        font_size=16,
+                        color_bgr=(0, 255, 0),
+                        bold=True,
+                    )
+                elif 10.5 <= st < 12.0:
+                    frame = draw_text_pil(
+                        frame,
+                        "ОПЛАЧЕНО НА КАССЕ: 35.40 BYN",
+                        (px1 + 35, py1 + 225),
+                        font_size=15,
+                        color_bgr=(0, 255, 255),
+                        bold=True,
+                    )
+                else:
+                    frame = draw_text_pil(
+                        frame,
+                        "ОЖИДАНИЕ ОПЛАТЫ НА КАССЕ",
+                        (px1 + 35, py1 + 225),
+                        font_size=15,
+                        color_bgr=(0, 200, 255),
+                        bold=True,
+                    )
             else:
                 progress = (st - 12.0) / 3.0
                 car_x = int(360 + progress * (width - 360 + 50))
                 car_y = 360
                 frame = draw_vehicle(frame, car_x, car_y, car_w, car_h, plate, car_color, model)
 
-            frame = draw_text_pil(
+            frame = draw_scenario_badge(
                 frame,
-                f"СЦЕНАРИЙ 3 [35-50с]: ГОСТЕВОЙ РЕЖИМ БЕЗ DRIVE&PAY (5678 MH-7) | t={t:.1f}c",
-                (30, 160),
-                font_size=20,
-                color_bgr=(255, 220, 0),
-                bold=True,
+                f"СЦЕНАРИЙ 3 [35-50с]: ГОСТЕВОЙ РЕЖИМ (5678 MH-7, 15.0 л, Оплата на кассе) | t={t:.1f}c",
+                accent_color_bgr=(0, 204, 255),
             )
 
         out.write(frame)
 
     out.release()
-    print(f"Synthetic test video with Cyrillic successfully generated at: {out_file}")
+    print(f"Synthetic test video with accurate logic successfully generated at: {out_file}")
     return str(out_file)
 
 
