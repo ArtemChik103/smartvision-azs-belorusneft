@@ -292,14 +292,17 @@ input[type=range]::-webkit-slider-thumb:hover {
         color: #0F172A !important;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", Helvetica, Arial, sans-serif !important;
         width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        display: block !important;
         margin: 0 !important;
         padding: 0 !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
 
-    /* Hide Navigation, Background tabs, Videos, Controls and Footers */
-    header, nav, footer, 
+    /* Hide Header, Main Content Container, Navigation, Controls and Footers */
+    header, main, nav, footer, 
     #tab-operator, #tab-audit, #tab-roi,
     .scenario-btn, .tactile-btn, .hud-toggle-btn,
     #snapshotModal, #receiptModal,
