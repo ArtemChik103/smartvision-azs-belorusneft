@@ -57,13 +57,26 @@ class SyntheticSceneEngine:
         color_bgr: Tuple[int, int, int] = (255, 255, 255),
         bold: bool = False,
     ) -> np.ndarray:
-        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-        pil_img = Image.fromarray(img_rgb)
-        draw = ImageDraw.Draw(pil_img)
         font = self.get_font(font_size, bold=bold)
+        x, y = pos
+        tw = max(120, int(len(text) * font_size * 0.85) + 30)
+        th = font_size + 24
+        h, w = img_bgr.shape[:2]
+        x1 = max(0, x)
+        y1 = max(0, y)
+        x2 = min(w, x + tw)
+        y2 = min(h, y + th)
+        if x2 <= x1 or y2 <= y1:
+            return img_bgr
+
+        patch_bgr = img_bgr[y1:y2, x1:x2]
+        patch_rgb = cv2.cvtColor(patch_bgr, cv2.COLOR_BGR2RGB)
+        pil_img = Image.fromarray(patch_rgb)
+        draw = ImageDraw.Draw(pil_img)
         color_rgb = (color_bgr[2], color_bgr[1], color_bgr[0])
-        draw.text(pos, text, fill=color_rgb, font=font)
-        return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+        draw.text((x - x1, y - y1), text, fill=color_rgb, font=font)
+        img_bgr[y1:y2, x1:x2] = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
+        return img_bgr
 
     def draw_scenario_badge(
         self,

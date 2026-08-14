@@ -37,6 +37,7 @@ class VisionPipeline:
         self._init_yolo()
 
         self.latest_frame: Optional[np.ndarray] = None
+        self.latest_jpeg_bytes: Optional[bytes] = None
         self.latest_telemetry: Dict[str, Any] = {}
         self.frame_count = 0
         self.fps = settings.VIDEO_FPS
@@ -280,13 +281,18 @@ class VisionPipeline:
         self.latest_telemetry = telemetry
         self.latest_frame = frame
 
+        # Pre-encode lightweight streaming JPEG once (zero per-client encoding overhead)
+        try:
+            stream_h, stream_w = 540, 960
+            resized = cv2.resize(frame, (stream_w, stream_h), interpolation=cv2.INTER_LINEAR)
+            ret, jpeg = cv2.imencode(".jpg", resized, [cv2.IMWRITE_JPEG_QUALITY, 70])
+            if ret:
+                self.latest_jpeg_bytes = jpeg.tobytes()
+        except Exception:
+            pass
+
         return frame, telemetry, safety_status
 
     def get_latest_jpeg(self) -> Optional[bytes]:
-        """Encode current frame to JPEG bytes for MJPEG streaming."""
-        if self.latest_frame is None:
-            return None
-        ret, jpeg = cv2.imencode(".jpg", self.latest_frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
-        if ret:
-            return jpeg.tobytes()
-        return None
+        """Get pre-encoded lightweight JPEG bytes with zero CPU overhead."""
+        return self.latest_jpeg_bytes

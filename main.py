@@ -52,12 +52,14 @@ async def video_pipeline_worker(app: FastAPI):
         return
 
     logger.info("Video processing worker loop started.")
-    fps = settings.VIDEO_FPS
+    fps = 25
     frame_interval = 1.0 / fps
     last_alarm_logged = 0.0
+    worker_frame_idx = 0
 
     while app.state.is_running:
         start_time = time.time()
+        worker_frame_idx += 1
 
         if pipeline.paused:
             await asyncio.sleep(0.05)
@@ -116,20 +118,21 @@ async def video_pipeline_worker(app: FastAPI):
                     fsm.transition_to(FuelingState.NOZZLE_RETURNED)
                     await fsm.complete_session()
                 else:
-                    # Increment fuel dispensed (~0.25 L per frame at 30 FPS = ~7.5 L/s demo flow rate)
-                    fsm.update_fuel_flow(delta_liters=0.12)
+                    # Increment fuel dispensed (~3.5 L/s demo flow rate)
+                    fsm.update_fuel_flow(delta_liters=0.14)
             elif fsm.state == FuelingState.SESSION_COMPLETE:
                 # If car departs (no plate or track empty for > 2 sec), return to IDLE
                 if time.time() - fsm.state_entry_time > 3.5:
                     fsm.reset_alarm()
 
-        # Broadcast telemetry packet over WebSockets
-        packet = {
-            "type": "TELEMETRY_UPDATE",
-            "fsm": fsm.get_state_payload(),
-            "telemetry": telemetry,
-        }
-        await ws_manager.broadcast_json(packet)
+        # Broadcast telemetry packet over WebSockets (12.5 Hz to keep network ultra-smooth)
+        if worker_frame_idx % 2 == 0 or is_alarm:
+            packet = {
+                "type": "TELEMETRY_UPDATE",
+                "fsm": fsm.get_state_payload(),
+                "telemetry": telemetry,
+            }
+            await ws_manager.broadcast_json(packet)
 
         # Rate control
         elapsed = time.time() - start_time

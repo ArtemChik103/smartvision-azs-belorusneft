@@ -51,10 +51,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (targetTab === 'tab-operator') {
                 refreshVideoStream();
-            } else if (targetTab === 'tab-audit') {
-                loadAuditLogs();
-            } else if (targetTab === 'tab-roi') {
-                roiWidget.recalculate();
+            } else {
+                if (stationVideo) stationVideo.src = '';
+                if (targetTab === 'tab-audit') {
+                    loadAuditLogs();
+                } else if (targetTab === 'tab-roi') {
+                    roiWidget.recalculate();
+                }
             }
         });
     });
