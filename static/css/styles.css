@@ -278,21 +278,110 @@ input[type=range]::-webkit-slider-thumb:hover {
     animation: alarmPulse 1.2s infinite;
 }
 
-/* Print Styles for PDF Export */
+/* ========================================================================= */
+/* Print Styles for PDF / A4 Report Export                                   */
+/* ========================================================================= */
 @media print {
-    body {
-        background: #FFFFFF !important;
-        color: #000000 !important;
+    @page {
+        size: A4 portrait;
+        margin: 10mm 12mm;
     }
-    header, nav, #tab-operator, #tab-audit, .scenario-btn, .tactile-btn {
+
+    html, body {
+        background: #FFFFFF !important;
+        color: #0F172A !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", Helvetica, Arial, sans-serif !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* Hide Navigation, Background tabs, Videos, Controls and Footers */
+    header, nav, footer, 
+    #tab-operator, #tab-audit, #tab-roi,
+    .scenario-btn, .tactile-btn, .hud-toggle-btn,
+    #snapshotModal, #receiptModal,
+    .print-hide {
         display: none !important;
     }
-    #tab-roi {
+
+    .print-only {
         display: block !important;
     }
-    .bg-\[\#18181B\] {
+
+    /* Modal Reset for A4 Page */
+    .modal-overlay {
+        position: static !important;
+        background: transparent !important;
+        backdrop-filter: none !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    #teoModal {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    #teoModal > div {
+        max-width: 100% !important;
+        width: 100% !important;
+        background: #FFFFFF !important;
+        color: #0F172A !important;
+        border: 2px solid #00843D !important;
+        border-radius: 8px !important;
+        box-shadow: none !important;
+        padding: 16px 20px !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    /* Typography & Corporate Palette for Print */
+    #teoModal h3 {
+        color: #00843D !important;
+        font-size: 15pt !important;
+        font-weight: 900 !important;
+    }
+    #teoModal p {
+        color: #475569 !important;
+    }
+    #teoModal .bg-zinc-900\/90, 
+    #teoModal .bg-zinc-900\/60,
+    #teoModal .bg-zinc-900 {
         background: #F8FAFC !important;
         border: 1px solid #CBD5E1 !important;
-        color: #000000 !important;
+        color: #0F172A !important;
+    }
+    #teoModal span.text-white {
+        color: #0F172A !important;
+        font-weight: 800 !important;
+    }
+    #teoModal span.text-zinc-400,
+    #teoModal span.text-zinc-300,
+    #teoModal span.text-zinc-200 {
+        color: #334155 !important;
+    }
+    #teoModal .text-emerald-400,
+    #teoModal .text-\[\#00E676\] {
+        color: #00843D !important;
+        font-weight: 900 !important;
+    }
+    #teoModal .text-amber-300 {
+        color: #B45309 !important;
+        font-weight: 900 !important;
+    }
+    #teoModal .border-zinc-800,
+    #teoModal .border-zinc-800\/60,
+    #teoModal .border-zinc-700 {
+        border-color: #E2E8F0 !important;
     }
 }

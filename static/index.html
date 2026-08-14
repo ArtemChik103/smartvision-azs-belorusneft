@@ -686,9 +686,23 @@
     <!-- ========================================================================= -->
     <div id="teoModal" class="modal-overlay">
         <div class="bg-[#18181B] border border-zinc-700 rounded-2xl max-w-3xl w-full p-6 relative shadow-2xl overflow-y-auto max-h-[90vh]">
-            <button id="closeTeoBtn" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center font-bold text-sm">
+            <button id="closeTeoBtn" class="print-hide absolute top-4 right-4 w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center font-bold text-sm">
                 ✕
             </button>
+
+            <!-- Corporate Print Letterhead (Visible on Print/PDF) -->
+            <div class="print-only hidden mb-4 pb-3 border-b-2 border-[#00843D]">
+                <div class="flex justify-between items-center text-xs text-slate-600">
+                    <div>
+                        <span class="font-black text-slate-900 text-sm tracking-wide">ПО «БЕЛОРУСНЕФТЬ»</span> • ЦЕНТРАЛЬНЫЙ АППАРАТ
+                        <br><span class="text-[11px] text-slate-500">Департамент развития розничной сети, АЗС и цифровых технологий</span>
+                    </div>
+                    <div class="text-right">
+                        <span>Документ: <strong class="text-slate-900 font-mono">ТЭО-2026/СВ-01</strong></span>
+                        <br><span class="text-slate-500">Дата: 14 августа 2026 г.</span>
+                    </div>
+                </div>
+            </div>
 
             <!-- Header -->
             <div class="flex items-center gap-3 mb-4 pb-4 border-b border-zinc-800">
@@ -742,8 +756,22 @@
                 </div>
             </div>
 
-            <!-- Action Buttons -->
-            <div class="flex flex-col sm:flex-row gap-3 pt-2">
+            <!-- Corporate Signature Block (Visible on Print/PDF) -->
+            <div class="print-only hidden mt-6 pt-4 border-t border-slate-300 text-[11px] text-slate-700">
+                <div class="grid grid-cols-2 gap-8">
+                    <div>
+                        <p class="font-bold text-slate-900 mb-6">Разработано:</p>
+                        <p class="border-t border-slate-400 pt-1 text-slate-600">Руководитель проекта SmartVision AZS / ____________ /</p>
+                    </div>
+                    <div>
+                        <p class="font-bold text-slate-900 mb-6">Согласовано:</p>
+                        <p class="border-t border-slate-400 pt-1 text-slate-600">Зам. генерального директора ПО «Белоруснефть» / ____________ /</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons (Hidden on Print) -->
+            <div class="print-hide flex flex-col sm:flex-row gap-3 pt-2">
                 <button id="btnPrintTeoPdf" class="flex-1 py-2.5 rounded-xl bg-[#00843D] hover:bg-[#005F2B] text-white font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-green-900/30">
                     <span>📄 Печать / Сохранить в PDF</span>
                 </button>
