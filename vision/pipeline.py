@@ -136,7 +136,7 @@ class VisionPipeline:
                 car_x = 340
             else:
                 # Driver moves forward prematurely while fueling!
-                disp_val = min(1.0, (st - 8.5) / 2.0) * 70.0
+                disp_val = min(1.0, (st - 8.5) / 0.8) * 80.0
                 car_x = int(340 + disp_val)
             car_y = 360
 

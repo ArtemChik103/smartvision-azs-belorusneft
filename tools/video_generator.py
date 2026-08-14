@@ -282,8 +282,8 @@ class SyntheticSceneEngine:
                 frame = self.draw_text_pil(frame, f"ИДЕТ НАЛИВ: {liters:.1f} Л", (px1 + 35, py1 + 225), font_size=16, color_bgr=(0, 255, 0), bold=True)
             else:
                 # 4. Driver accelerates forward while nozzle is still in tank -> EMERGENCY ALARM!
-                move_progress = min(1.0, (st - 8.5) / 2.0)
-                disp = move_progress * 70.0
+                move_progress = min(1.0, (st - 8.5) / 0.8)
+                disp = move_progress * 80.0
                 car_x = int(340 + disp)
                 frame = self.draw_vehicle(frame, car_x, 360, car_w, car_h, plate, car_color, model)
                 hatch = (car_x + int(car_w * 0.82), 360 + int(car_h * 0.48))
