@@ -124,15 +124,16 @@ class SyntheticSceneEngine:
         cv2.rectangle(bg, (px1, py1), (px2, py1 + 60), (40, 120, 0), -1)
         bg = self.draw_text_pil(bg, "ТРК 2", (px1 + 100, py1 + 14), font_size=32, color_bgr=(0, 230, 255), bold=True)
 
-        cv2.rectangle(bg, (px1 + 30, py1 + 90), (px2 - 30, py1 + 250), (15, 18, 20), -1)
-        cv2.rectangle(bg, (px1 + 30, py1 + 90), (px2 - 30, py1 + 250), (60, 65, 70), 1)
+        cv2.rectangle(bg, (px1 + 25, py1 + 75), (px2 - 25, py1 + 265), (15, 18, 20), -1)
+        cv2.rectangle(bg, (px1 + 25, py1 + 75), (px2 - 25, py1 + 265), (60, 65, 70), 1)
 
-        bg = self.draw_text_pil(bg, "АИ-95: 2.46 BYN", (px1 + 45, py1 + 105), font_size=20, color_bgr=(0, 255, 255), bold=True)
-        bg = self.draw_text_pil(bg, "ДТ:    2.46 BYN", (px1 + 45, py1 + 145), font_size=20, color_bgr=(0, 255, 180), bold=True)
-        bg = self.draw_text_pil(bg, "АИ-92: 2.36 BYN", (px1 + 45, py1 + 185), font_size=20, color_bgr=(0, 200, 255), bold=True)
+        bg = self.draw_text_pil(bg, "АИ-98: 2.68 BYN", (px1 + 40, py1 + 85), font_size=18, color_bgr=(0, 215, 255), bold=True)
+        bg = self.draw_text_pil(bg, "АИ-95: 2.46 BYN", (px1 + 40, py1 + 125), font_size=18, color_bgr=(0, 255, 150), bold=True)
+        bg = self.draw_text_pil(bg, "АИ-92: 2.36 BYN", (px1 + 40, py1 + 165), font_size=18, color_bgr=(0, 230, 255), bold=True)
+        bg = self.draw_text_pil(bg, "ДТ:    2.46 BYN", (px1 + 40, py1 + 205), font_size=18, color_bgr=(50, 200, 255), bold=True)
 
-        cv2.rectangle(bg, (px1 + 40, py1 + 280), (px1 + 120, py1 + 420), (20, 20, 20), -1)
-        bg = self.draw_text_pil(bg, "ПИСТОЛЕТ 1", (px1 + 42, py1 + 440), font_size=14, color_bgr=(200, 200, 200), bold=False)
+        cv2.rectangle(bg, (px1 + 40, py1 + 290), (px1 + 120, py1 + 430), (20, 20, 20), -1)
+        bg = self.draw_text_pil(bg, "ПИСТОЛЕТ 1", (px1 + 42, py1 + 450), font_size=14, color_bgr=(200, 200, 200), bold=False)
         return bg
 
     def draw_vehicle(
