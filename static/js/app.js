@@ -332,11 +332,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnPrintTeoPdf = document.getElementById('btnPrintTeoPdf');
     const btnDownloadTeoCsv = document.getElementById('btnDownloadTeoCsv');
 
-    window.openTeoModal = () => {
+    window.updateTeoValues = () => {
         const hoseKpi = document.getElementById('kpi_hose_savings')?.textContent || '192 000 BYN';
         const retailKpi = document.getElementById('kpi_retail_profit')?.textContent || '21 845 250 BYN';
         const netKpi = document.getElementById('kpi_total_effect')?.textContent || '22 006 850 BYN';
-        const paybackKpi = document.getElementById('kpi_payback')?.textContent || '< 1 мес.';
+        const paybackKpi = document.getElementById('kpi_payback')?.textContent || '0.2 мес.';
         const roiKpi = document.getElementById('kpi_roi_5y')?.textContent || '+28 856%';
         const stationsVal = document.getElementById('slider_station_count')?.value || '570';
 
@@ -356,12 +356,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (elRetail) elRetail.textContent = `${retailKpi} / год`;
         if (elCapex) {
             const stationsNum = parseInt(stationsVal) || 570;
-            const capexNum = stationsNum === 570 ? 380000 : (stationsNum === 60 ? 85000 : (stationsNum === 1 ? 6500 : stationsNum * 666));
+            const capexNum = stationsNum === 570 ? 380000 : (stationsNum === 60 ? 85000 : (stationsNum === 1 ? 6500 : Math.round(stationsNum * 666.67)));
             elCapex.textContent = `${capexNum.toLocaleString('ru-RU')} BYN`;
         }
+    };
 
+    window.openTeoModal = () => {
+        window.updateTeoValues();
         teoModal?.classList.add('open');
     };
+
+    window.addEventListener('beforeprint', () => {
+        window.updateTeoValues();
+    });
 
     if (exportReportBtn) {
         exportReportBtn.addEventListener('click', () => {
