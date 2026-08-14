@@ -28,14 +28,9 @@ class TelemetryCanvasRenderer {
     resize() {
         if (!this.canvas) return;
         const rect = this.canvas.getBoundingClientRect();
-        this.canvas.width = rect.width * (window.devicePixelRatio || 1);
-        this.canvas.height = rect.height * (window.devicePixelRatio || 1);
-        if (this.ctx) {
-            this.ctx.scale(
-                this.canvas.width / this.virtualWidth,
-                this.canvas.height / this.virtualHeight
-            );
-        }
+        const dpr = window.devicePixelRatio || 1;
+        this.canvas.width = Math.max(1, Math.round(rect.width * dpr));
+        this.canvas.height = Math.max(1, Math.round(rect.height * dpr));
     }
 
     updateTelemetry(telemetry) {
@@ -48,9 +43,15 @@ class TelemetryCanvasRenderer {
     }
 
     render() {
-        if (!this.ctx) return;
+        if (!this.ctx || !this.canvas) return;
         const ctx = this.ctx;
-        ctx.clearRect(0, 0, this.virtualWidth, this.virtualHeight);
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        ctx.scale(
+            this.canvas.width / this.virtualWidth,
+            this.canvas.height / this.virtualHeight
+        );
 
         // 1. Draw Bounding Boxes & Zones
         for (const box of this.currentBoxes) {
@@ -170,6 +171,8 @@ class TelemetryCanvasRenderer {
 
             ctx.restore();
         }
+
+        ctx.restore();
     }
 }
 

@@ -132,18 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const targetSec = pct * 50.0;
 
             try {
-                let action = 'scenario_1';
-                if (targetSec >= 35.0) action = 'scenario_3';
-                else if (targetSec >= 20.0) action = 'scenario_2';
-
-                // Seek backend directly
-                if (action === 'scenario_1') {
-                    await fetch(`/api/simulator/control?action=scenario_1`, { method: 'POST' });
-                } else if (action === 'scenario_2') {
-                    await fetch(`/api/simulator/control?action=scenario_2`, { method: 'POST' });
-                } else {
-                    await fetch(`/api/simulator/control?action=scenario_3`, { method: 'POST' });
-                }
+                await fetch(`/api/simulator/control?action=seek&time=${targetSec.toFixed(1)}`, { method: 'POST' });
             } catch (err) {
                 console.error('Timeline seek error:', err);
             }

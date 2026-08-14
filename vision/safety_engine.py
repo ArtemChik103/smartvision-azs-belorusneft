@@ -55,7 +55,7 @@ class SafetyEngine:
             self.reset_alarm()
 
     def reset_alarm(self) -> None:
-        """Reset alarm latch after operator confirmation."""
+        """Reset alarm latch and release pump lock."""
         self.alarm_latched = False
         self.manual_e_stop = False
         self.status = SafetyStatus(
@@ -65,9 +65,9 @@ class SafetyEngine:
             speed_px_sec=0.0,
             nozzle_in_tank=False,
             pump_locked=False,
-            message="Система безопасности в штатном режиме.",
+            message="Система безопасности в штатном режиме. Насос разблокирован.",
         )
-        logger.info("Safety alarm state reset by operator.")
+        logger.info("Safety alarm state reset.")
 
     def evaluate_frame(
         self,
@@ -121,7 +121,7 @@ class SafetyEngine:
                     ts_str = int(now)
                     filename = f"incident_tear_{ts_str}_{vehicle_plate.replace(' ', '_')}.jpg"
                     filepath = SNAPSHOTS_DIR / filename
-                    
+
                     # Annotate snapshot with critical alert banner
                     annotated = frame.copy()
                     cv2.rectangle(annotated, (0, 0), (annotated.shape[1], 80), (0, 0, 200), -1)

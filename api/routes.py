@@ -150,7 +150,11 @@ async def calculate_roi(params: ROIParams) -> Dict[str, Any]:
 
 
 @router.post("/simulator/control")
-async def control_simulator(action: str = Query(..., pattern="^(restart|pause|resume|scenario_1|scenario_2|scenario_3)$"), request: Request = None) -> Dict[str, Any]:
+async def control_simulator(
+    action: str = Query(..., pattern="^(restart|pause|resume|scenario_1|scenario_2|scenario_3|seek)$"),
+    time_sec: Optional[float] = Query(None, alias="time"),
+    request: Request = None,
+) -> Dict[str, Any]:
     """Control synthetic video playback position and state."""
     pipeline = getattr(request.app.state, "pipeline", None)
     fsm = getattr(request.app.state, "fsm", None)
@@ -182,8 +186,14 @@ async def control_simulator(action: str = Query(..., pattern="^(restart|pause|re
         pipeline.paused = False
         if fsm:
             fsm.reset_alarm()
+    elif action == "seek":
+        target = float(time_sec) if time_sec is not None else 0.0
+        pipeline.seek_time(max(0.0, min(50.0, target)))
+        pipeline.paused = False
+        if fsm:
+            fsm.reset_alarm()
 
-    return {"success": True, "action": action}
+    return {"success": True, "action": action, "time": pipeline.sim_time}
 
 
 @router.get("/video/feed")

@@ -146,6 +146,14 @@ class SmartVisionAudio {
             }, 60);
         }
     }
+
+    playEmergencyAlarm() {
+        this.startEmergencySiren();
+    }
+
+    stopEmergencyAlarm() {
+        this.stopSiren();
+    }
 }
 
 window.soundAlerts = new SmartVisionAudio();
