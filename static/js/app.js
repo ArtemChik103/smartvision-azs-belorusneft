@@ -387,6 +387,53 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const btnDownloadTeoExcel = document.getElementById('btnDownloadTeoExcel');
+    if (btnDownloadTeoExcel) {
+        btnDownloadTeoExcel.addEventListener('click', async () => {
+            const stationsCount = parseInt(document.getElementById('slider_station_count')?.value) || 570;
+            const dailyTraffic = parseInt(document.getElementById('slider_daily_traffic')?.value) || 750;
+            const hoseIncidents = parseInt(document.getElementById('slider_hose_incidents')?.value) || 160;
+            const hoseCost = parseFloat(document.getElementById('slider_hose_cost')?.value) || 1200.0;
+            const retailGrowth = parseFloat(document.getElementById('slider_retail_growth')?.value) || 4.0;
+
+            const stationsNum = stationsCount;
+            const capexNum = stationsNum === 570 ? 380000.0 : (stationsNum === 60 ? 85000.0 : (stationsNum === 1 ? 6500.0 : stationsNum * 666.67));
+
+            const params = {
+                station_count: stationsCount,
+                daily_traffic: dailyTraffic,
+                hose_incidents_prevented: hoseIncidents,
+                hose_damage_cost: hoseCost,
+                retail_growth_pct: retailGrowth,
+                retail_avg_check: 25.0,
+                retail_margin_pct: 35.0,
+                system_capex: capexNum,
+                annual_opex_pct: 8.0,
+            };
+
+            try {
+                const response = await fetch('/api/roi/export-excel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(params),
+                });
+                if (!response.ok) throw new Error('Ошибка генерации Excel');
+
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', `TEO_SmartVision_Belorusneft_${stationsCount}_AZS.xlsx`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (err) {
+                console.error('Excel export error:', err);
+                alert('Не удалось сформировать Excel файл. Проверьте соединение с сервером.');
+            }
+        });
+    }
+
     if (btnDownloadTeoCsv) {
         btnDownloadTeoCsv.addEventListener('click', () => {
             const stationsVal = document.getElementById('slider_station_count')?.value || '570';

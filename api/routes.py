@@ -149,6 +149,19 @@ async def calculate_roi(params: ROIParams) -> Dict[str, Any]:
     }
 
 
+@router.post("/roi/export-excel")
+async def export_roi_excel(params: ROIParams):
+    """Generate and stream executive formatted Belorusneft TEO Excel workbook (.xlsx)."""
+    from core.excel_exporter import generate_teo_excel_bytes
+    excel_stream = generate_teo_excel_bytes(params)
+    filename = f"TEO_SmartVision_Belorusneft_{params.station_count}_AZS.xlsx"
+    return StreamingResponse(
+        excel_stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.post("/simulator/control")
 async def control_simulator(
     action: str = Query(..., pattern="^(restart|pause|resume|scenario_1|scenario_2|scenario_3|seek)$"),
