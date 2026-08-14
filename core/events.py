@@ -59,16 +59,21 @@ class ConnectionManager:
             return
 
         text = json.dumps(message, ensure_ascii=False)
-        disconnected = []
-
         async with self._lock:
             connections = list(self.active_connections)
 
-        for ws in connections:
+        if not connections:
+            return
+
+        async def _safe_send(ws: WebSocket):
             try:
-                await ws.send_text(text)
+                await asyncio.wait_for(ws.send_text(text), timeout=0.5)
+                return None
             except Exception:
-                disconnected.append(ws)
+                return ws
+
+        results = await asyncio.gather(*(_safe_send(ws) for ws in connections), return_exceptions=False)
+        disconnected = [r for r in results if isinstance(r, WebSocket)]
 
         if disconnected:
             async with self._lock:

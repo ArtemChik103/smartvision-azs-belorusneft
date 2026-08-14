@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     AsyncSession,
 )
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from config import settings
 from database.models import Base, User, Vehicle, FuelingSession, IncidentLog
@@ -43,8 +43,10 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
-    """Initialize SQLite tables and populate seed data if missing."""
+    """Initialize SQLite tables, enable WAL mode and populate seed data if missing."""
     async with engine.begin() as conn:
+        await conn.execute(text("PRAGMA journal_mode=WAL;"))
+        await conn.execute(text("PRAGMA synchronous=NORMAL;"))
         await conn.run_sync(Base.metadata.create_all)
 
     async with AsyncSessionLocal() as session:
