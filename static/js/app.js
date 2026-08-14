@@ -16,6 +16,26 @@ document.addEventListener('DOMContentLoaded', () => {
     let cachedSessions = [];
     let cachedIncidents = [];
 
+    // Video Stream Watchdog & Reconnection
+    const stationVideo = document.getElementById('stationVideo');
+    function refreshVideoStream() {
+        if (!stationVideo) return;
+        stationVideo.src = `/api/video/feed?t=${Date.now()}`;
+    }
+
+    if (stationVideo) {
+        stationVideo.onerror = () => {
+            console.warn('Video stream interrupted. Reconnecting in 1s...');
+            setTimeout(refreshVideoStream, 1000);
+        };
+        // Periodic stream sanity watchdog
+        setInterval(() => {
+            if (stationVideo && stationVideo.complete && stationVideo.naturalWidth === 0) {
+                refreshVideoStream();
+            }
+        }, 10000);
+    }
+
     // 2. Tab Navigation
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabPanels = document.querySelectorAll('.tab-panel');
@@ -29,7 +49,9 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.classList.add('active');
             document.getElementById(targetTab)?.classList.remove('hidden');
 
-            if (targetTab === 'tab-audit') {
+            if (targetTab === 'tab-operator') {
+                refreshVideoStream();
+            } else if (targetTab === 'tab-audit') {
                 loadAuditLogs();
             } else if (targetTab === 'tab-roi') {
                 roiWidget.recalculate();
@@ -408,6 +430,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('wsStatusBadge')?.classList.remove('bg-red-500');
             document.getElementById('wsStatusBadge')?.classList.add('bg-green-500');
             document.getElementById('wsStatusText').textContent = 'ONLINE';
+            refreshVideoStream();
         };
 
         ws.onmessage = (event) => {

@@ -198,23 +198,34 @@ async def control_simulator(
 
 @router.get("/video/feed")
 async def video_feed(request: Request):
-    """MJPEG Video streaming feed."""
+    """MJPEG Video streaming feed with disconnect resilience."""
     pipeline = getattr(request.app.state, "pipeline", None)
 
     async def frame_generator():
-        while True:
-            if pipeline:
-                jpeg = pipeline.get_latest_jpeg()
-                if jpeg:
-                    yield (
-                        b"--frame\r\n"
-                        b"Content-Type: image/jpeg\r\n\r\n" + jpeg + b"\r\n"
-                    )
-            await asyncio.sleep(0.033)  # ~30 FPS
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                if pipeline:
+                    jpeg = pipeline.get_latest_jpeg()
+                    if jpeg:
+                        yield (
+                            b"--frame\r\n"
+                            b"Content-Type: image/jpeg\r\n\r\n" + jpeg + b"\r\n"
+                        )
+                await asyncio.sleep(0.033)  # ~30 FPS
+        except (asyncio.CancelledError, Exception):
+            pass
 
     return StreamingResponse(
         frame_generator(),
         media_type="multipart/x-mixed-replace; boundary=frame",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+            "Connection": "close",
+        },
     )
 
 
