@@ -1,6 +1,6 @@
 /**
  * Canvas 2D HUD & Bounding Box Renderer for SmartVision AZS.
- * Renders telemetry overlays, zone boundaries, centroid vectors, and alarm indicators.
+ * Renders telemetry overlays, zone boundaries, centroid vectors, and alarm indicators with layer toggles.
  */
 class TelemetryCanvasRenderer {
     constructor(canvasId) {
@@ -13,6 +13,11 @@ class TelemetryCanvasRenderer {
         this.alarmType = '';
         this.displacement = 0;
         this.flashCounter = 0;
+
+        // Layer visibility toggles
+        this.showPlates = true;
+        this.showZones = true;
+        this.showDisplacement = true;
 
         if (this.canvas) {
             this.resize();
@@ -49,6 +54,9 @@ class TelemetryCanvasRenderer {
 
         // 1. Draw Bounding Boxes & Zones
         for (const box of this.currentBoxes) {
+            if (box.type === 'zone' && !this.showZones) continue;
+            if (box.type === 'plate' && !this.showPlates) continue;
+
             const [x1, y1, x2, y2] = box.bbox;
             const w = x2 - x1;
             const h = y2 - y1;
@@ -97,7 +105,7 @@ class TelemetryCanvasRenderer {
                 ctx.stroke();
 
                 // Centroid & displacement marker for vehicle
-                if (box.centroid && box.type === 'vehicle') {
+                if (box.centroid && box.type === 'vehicle' && this.showDisplacement) {
                     const [cx, cy] = box.centroid;
                     ctx.fillStyle = color;
                     ctx.beginPath();

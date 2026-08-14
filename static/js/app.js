@@ -1,6 +1,7 @@
 /**
- * Main Application Controller for SmartVision AZS.
- * Manages WebSocket telemetry stream, FSM lifecycle UI, Drive&Pay card, and Audit logs.
+ * Main Application Controller for SmartVision AZS — Belorusneft.
+ * Manages WebSocket telemetry stream, FSM lifecycle UI, Drive&Pay card,
+ * Scrubber Timeline, Glass HUD Toggles, Modals, and Audit logs.
  */
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Initialize Components
@@ -10,6 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let reconnectTimer = null;
     let lastKnownState = 'IDLE';
     let isAlarmActive = false;
+    let currentFuelPrice = 2.46;
+    let currentFuelType = 'АИ-95';
+    let cachedSessions = [];
+    let cachedIncidents = [];
 
     // 2. Tab Navigation
     const tabBtns = document.querySelectorAll('.tab-btn');
@@ -37,13 +42,250 @@ document.addEventListener('DOMContentLoaded', () => {
     if (muteBtn) {
         muteBtn.addEventListener('click', () => {
             const isMuted = window.soundAlerts.toggleMute();
-            muteBtn.innerHTML = isMuted
-                ? `<svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" /></svg> <span>Звук: Выкл</span>`
-                : `<svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg> <span>Звук: Вкл</span>`;
+            document.getElementById('muteIcon').textContent = isMuted ? '🔇' : '🔊';
+            document.getElementById('muteText').textContent = isMuted ? 'Звук: Выкл' : 'Звук: Вкл';
         });
     }
 
-    // 4. WebSocket Client Setup
+    // 4. Floating Glass HUD Controls
+    const btnLayerPlate = document.getElementById('btnLayerPlate');
+    const btnLayerZone = document.getElementById('btnLayerZone');
+    const btnLayerDisp = document.getElementById('btnLayerDisp');
+    const btnSnapshot = document.getElementById('btnSnapshot');
+    const btnFullscreen = document.getElementById('btnFullscreen');
+
+    if (btnLayerPlate) {
+        btnLayerPlate.addEventListener('click', () => {
+            canvasRenderer.showPlates = !canvasRenderer.showPlates;
+            btnLayerPlate.classList.toggle('active', canvasRenderer.showPlates);
+            btnLayerPlate.textContent = canvasRenderer.showPlates ? '✓ Номер' : '✕ Номер';
+            canvasRenderer.render();
+        });
+    }
+    if (btnLayerZone) {
+        btnLayerZone.addEventListener('click', () => {
+            canvasRenderer.showZones = !canvasRenderer.showZones;
+            btnLayerZone.classList.toggle('active', canvasRenderer.showZones);
+            btnLayerZone.textContent = canvasRenderer.showZones ? '✓ Зона' : '✕ Зона';
+            canvasRenderer.render();
+        });
+    }
+    if (btnLayerDisp) {
+        btnLayerDisp.addEventListener('click', () => {
+            canvasRenderer.showDisplacement = !canvasRenderer.showDisplacement;
+            btnLayerDisp.classList.toggle('active', canvasRenderer.showDisplacement);
+            btnLayerDisp.textContent = canvasRenderer.showDisplacement ? '✓ Смещение' : '✕ Смещение';
+            canvasRenderer.render();
+        });
+    }
+
+    // Snapshot Functionality
+    if (btnSnapshot) {
+        btnSnapshot.addEventListener('click', () => {
+            const videoImg = document.getElementById('stationVideo');
+            const hudCanvas = document.getElementById('telemetryCanvas');
+            if (!videoImg || !hudCanvas) return;
+
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 1280;
+            tempCanvas.height = 720;
+            const ctx = tempCanvas.getContext('2d');
+
+            try {
+                ctx.drawImage(videoImg, 0, 0, 1280, 720);
+                ctx.drawImage(hudCanvas, 0, 0, 1280, 720);
+
+                const link = document.createElement('a');
+                link.download = `SmartVision_Snapshot_${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+                link.href = tempCanvas.toDataURL('image/png');
+                link.click();
+            } catch (e) {
+                console.error('Failed to capture snapshot:', e);
+            }
+        });
+    }
+
+    // Fullscreen Toggle
+    if (btnFullscreen) {
+        btnFullscreen.addEventListener('click', () => {
+            const container = document.getElementById('videoContainer');
+            if (!document.fullscreenElement) {
+                container?.requestFullscreen().catch((err) => console.error(err));
+                btnFullscreen.textContent = '⛶ Выход';
+            } else {
+                document.exitFullscreen();
+                btnFullscreen.textContent = '⛶ Экран';
+            }
+        });
+    }
+
+    // 5. Interactive Scrubber Timeline
+    const timelineEl = document.getElementById('scenarioTimeline');
+    const timelineProgress = document.getElementById('timelineProgress');
+    const timelineTimeText = document.getElementById('timelineCurrentTimeText');
+
+    if (timelineEl) {
+        timelineEl.addEventListener('click', async (e) => {
+            const rect = timelineEl.getBoundingClientRect();
+            const clickX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+            const pct = clickX / rect.width;
+            const targetSec = pct * 50.0;
+
+            try {
+                let action = 'scenario_1';
+                if (targetSec >= 35.0) action = 'scenario_3';
+                else if (targetSec >= 20.0) action = 'scenario_2';
+
+                // Seek backend directly
+                if (action === 'scenario_1') {
+                    await fetch(`/api/simulator/control?action=scenario_1`, { method: 'POST' });
+                } else if (action === 'scenario_2') {
+                    await fetch(`/api/simulator/control?action=scenario_2`, { method: 'POST' });
+                } else {
+                    await fetch(`/api/simulator/control?action=scenario_3`, { method: 'POST' });
+                }
+            } catch (err) {
+                console.error('Timeline seek error:', err);
+            }
+        });
+    }
+
+    // 6. Fuel Grade Selector
+    const fuelGradeBtns = document.querySelectorAll('.fuel-grade-btn');
+    fuelGradeBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            fuelGradeBtns.forEach((b) => {
+                b.className = 'fuel-grade-btn px-2.5 py-1 rounded bg-zinc-800 text-zinc-300 font-bold text-[11px] border border-zinc-700 hover:bg-zinc-700';
+            });
+            btn.className = 'fuel-grade-btn active px-2.5 py-1 rounded bg-[#00843D] text-white font-bold text-[11px] border border-[#00A84E]';
+            currentFuelType = btn.getAttribute('data-fuel');
+            currentFuelPrice = parseFloat(btn.getAttribute('data-price') || '2.46');
+            const cardFuel = document.getElementById('cardFuelType');
+            if (cardFuel) {
+                cardFuel.textContent = `${currentFuelType} (${currentFuelPrice.toFixed(2)} BYN/л)`;
+            }
+        });
+    });
+
+    // 7. Electronic Fiscal Receipt Modal
+    const receiptModal = document.getElementById('receiptModal');
+    const openReceiptBtn = document.getElementById('openReceiptBtn');
+    const closeReceiptBtn = document.getElementById('closeReceiptBtn');
+
+    function drawReceiptQr(receiptId) {
+        const qrCanvas = document.getElementById('receiptQrCanvas');
+        if (!qrCanvas) return;
+        const ctx = qrCanvas.getContext('2d');
+        ctx.clearRect(0, 0, 112, 112);
+
+        // Simple high-contrast geometric QR pattern for demo
+        ctx.fillStyle = '#0F172A';
+        ctx.fillRect(0, 0, 112, 112);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(4, 4, 104, 104);
+
+        ctx.fillStyle = '#0F172A';
+        // Corner squares
+        ctx.fillRect(8, 8, 28, 28);
+        ctx.clearRect(12, 12, 20, 20);
+        ctx.fillRect(16, 16, 12, 12);
+
+        ctx.fillRect(76, 8, 28, 28);
+        ctx.clearRect(80, 12, 20, 20);
+        ctx.fillRect(84, 16, 12, 12);
+
+        ctx.fillRect(8, 76, 28, 28);
+        ctx.clearRect(12, 80, 20, 20);
+        ctx.fillRect(16, 84, 12, 12);
+
+        // Pattern grid
+        for (let i = 0; i < 7; i++) {
+            for (let j = 0; j < 7; j++) {
+                if ((i + j) % 2 === 0) {
+                    ctx.fillRect(42 + i * 4, 42 + j * 4, 4, 4);
+                }
+            }
+        }
+    }
+
+    if (openReceiptBtn) {
+        openReceiptBtn.addEventListener('click', () => {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('ru-RU') + ' ' + now.toLocaleTimeString('ru-RU');
+            const plate = document.getElementById('cardPlate')?.textContent || '7777 AB-7';
+            const driver = document.getElementById('cardDriverName')?.textContent || 'Иванов И. И.';
+            const cost = document.getElementById('dispensedCost')?.textContent || '73.80 BYN';
+            const liters = document.getElementById('dispensedLiters')?.textContent || '30.00';
+            const receiptId = `REC-BN-${plate.replace(/[^A-Z0-9]/gi, '')}-${Math.floor(Date.now() / 1000)}`;
+
+            document.getElementById('receiptNumber').textContent = receiptId;
+            document.getElementById('receiptDate').textContent = dateStr;
+            document.getElementById('receiptPlate').textContent = plate;
+            document.getElementById('receiptDriver').textContent = driver;
+            document.getElementById('receiptFuelItem').textContent = `Топливо ${currentFuelType} (${liters} л × ${currentFuelPrice.toFixed(2)} BYN):`;
+            document.getElementById('receiptTotalVal').textContent = cost;
+
+            const costNum = parseFloat(cost) || 73.8;
+            const bonusNum = (costNum * 0.1).toFixed(2);
+            document.getElementById('receiptBonus').textContent = `+${bonusNum} БОНУСОВ`;
+
+            drawReceiptQr(receiptId);
+            receiptModal?.classList.add('open');
+        });
+    }
+
+    if (closeReceiptBtn) {
+        closeReceiptBtn.addEventListener('click', () => {
+            receiptModal?.classList.remove('open');
+        });
+    }
+    if (receiptModal) {
+        receiptModal.addEventListener('click', (e) => {
+            if (e.target === receiptModal) receiptModal.classList.remove('open');
+        });
+    }
+
+    // 8. Snapshot Modal for Audit Log
+    const snapshotModal = document.getElementById('snapshotModal');
+    const closeSnapshotBtn = document.getElementById('closeSnapshotBtn');
+
+    if (closeSnapshotBtn) {
+        closeSnapshotBtn.addEventListener('click', () => {
+            snapshotModal?.classList.remove('open');
+        });
+    }
+    if (snapshotModal) {
+        snapshotModal.addEventListener('click', (e) => {
+            if (e.target === snapshotModal) snapshotModal.classList.remove('open');
+        });
+    }
+
+    window.openIncidentSnapshot = (plate, disp, desc, timeStr) => {
+        const modalImg = document.getElementById('snapshotModalImg');
+        const modalDetails = document.getElementById('snapshotModalDetails');
+        if (modalImg) {
+            modalImg.src = '/api/video/feed';
+        }
+        if (modalDetails) {
+            modalDetails.innerHTML = `
+                <div class="bg-zinc-900 p-3 rounded-xl border border-zinc-800">
+                    <span class="text-zinc-400 block mb-1">Госномер Т/С</span>
+                    <span class="font-mono font-bold text-amber-300 text-sm">${plate}</span>
+                </div>
+                <div class="bg-zinc-900 p-3 rounded-xl border border-zinc-800">
+                    <span class="text-zinc-400 block mb-1">Критическое смещение</span>
+                    <span class="font-bold text-red-400 text-sm">${disp} px / 300мс (&gt; 15 px)</span>
+                </div>
+                <div class="col-span-2 bg-zinc-900 p-3 rounded-xl border border-zinc-800">
+                    <span class="text-zinc-400 block mb-1">Действие системы безопасности:</span>
+                    <span class="text-zinc-200">${desc}. Сигнал E-STOP отправлен на контроллер насоса.</span>
+                </div>
+            `;
+        }
+        snapshotModal?.classList.add('open');
+    };
+
+    // 9. WebSocket Client Setup
     function connectWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/ws/telemetry`;
@@ -54,7 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Connected to SmartVision Telemetry Stream.');
             document.getElementById('wsStatusBadge')?.classList.remove('bg-red-500');
             document.getElementById('wsStatusBadge')?.classList.add('bg-green-500');
-            document.getElementById('wsStatusText').textContent = 'ONLINE (WebSocket)';
+            document.getElementById('wsStatusText').textContent = 'ONLINE';
         };
 
         ws.onmessage = (event) => {
@@ -76,7 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // 5. Handle Live Telemetry Update
+    // 10. Handle Live Telemetry Update
     function handleTelemetryMessage(msg) {
         // Update Canvas Overlays
         canvasRenderer.updateTelemetry(msg.telemetry);
@@ -85,6 +327,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const state = fsm.state || 'IDLE';
         const session = fsm.session;
         const telemetry = msg.telemetry || {};
+        const simTime = telemetry.sim_time !== undefined ? telemetry.sim_time : 0.0;
+
+        // Update Timeline progress
+        if (timelineProgress) {
+            const pct = Math.min(100, Math.max(0, (simTime / 50.0) * 100));
+            timelineProgress.style.width = `${pct}%`;
+        }
+        if (timelineTimeText) {
+            const sec = Math.floor(simTime);
+            timelineTimeText.textContent = `00:${sec < 10 ? '0' + sec : sec} / 00:50`;
+        }
 
         // Audio Triggers on State Transition
         if (state !== lastKnownState) {
@@ -98,85 +351,91 @@ document.addEventListener('DOMContentLoaded', () => {
             lastKnownState = state;
         }
 
-        // Safety Alarm Siren Handling
-        if (telemetry.is_alarm || state === 'ALARM_LOCKDOWN') {
-            if (!isAlarmActive) {
-                isAlarmActive = true;
-                window.soundAlerts.startEmergencySiren();
-            }
-        } else {
-            if (isAlarmActive) {
-                isAlarmActive = false;
-                window.soundAlerts.stopSiren();
-            }
+        if (telemetry.is_alarm && !isAlarmActive) {
+            window.soundAlerts.playEmergencyAlarm();
+            isAlarmActive = true;
+        } else if (!telemetry.is_alarm && isAlarmActive) {
+            window.soundAlerts.stopEmergencyAlarm();
+            isAlarmActive = false;
         }
 
-        // Update FSM State Badge
-        updateStateBadge(state);
-
-        // Update Drive&Pay Card
-        updateDriveAndPayCard(session, state);
-
-        // Update Fuel Dispense Progress Meter
+        // Update Cockpit Badges & Panels
+        updateFsmBadge(state);
+        updateDriveAndPayCard(session, state, telemetry.plate_detected);
         updateFuelMeter(session, state);
-
-        // Update Safety Monitor
         updateSafetyPanel(telemetry, state);
     }
 
-    function updateStateBadge(state) {
+    function updateFsmBadge(state) {
         const badge = document.getElementById('fsmStateBadge');
         if (!badge) return;
 
         const stateConfig = {
-            IDLE: { text: 'ОЖИДАНИЕ Т/С', bg: 'bg-zinc-800', textCol: 'text-zinc-300', border: 'border-zinc-700' },
-            CAR_ARRIVED: { text: 'АВТОМОБИЛЬ НА ТРК', bg: 'bg-blue-900/40', textCol: 'text-blue-400', border: 'border-blue-700' },
-            PLATE_IDENTIFIED: { text: 'ГОСНОМЕР ОПРЕДЕЛЕН', bg: 'bg-amber-900/40', textCol: 'text-amber-300', border: 'border-amber-600' },
-            NOZZLE_INSERTED: { text: 'ПИСТОЛЕТ В БАКЕ', bg: 'bg-emerald-900/40', textCol: 'text-emerald-300', border: 'border-emerald-600' },
-            FUELING: { text: 'ИДЕТ НАЛИВ ТОПЛИВА', bg: 'bg-green-600/30', textCol: 'text-green-400', border: 'border-green-500' },
-            NOZZLE_RETURNED: { text: 'ПИСТОЛЕТ ВЕРНУТ', bg: 'bg-teal-900/40', textCol: 'text-teal-300', border: 'border-teal-600' },
-            SESSION_COMPLETE: { text: 'ЗАПРАВКА ЗАВЕРШЕНА', bg: 'bg-green-700/40', textCol: 'text-green-300', border: 'border-green-600' },
-            ALARM_LOCKDOWN: { text: 'АВАРИЙНАЯ БЛОКИРОВКА (E-STOP)', bg: 'bg-red-600 animate-pulse', textCol: 'text-white', border: 'border-red-500' },
+            IDLE: { text: 'ОЖИДАНИЕ Т/С', class: 'bg-zinc-800 text-zinc-300 border-zinc-700' },
+            VEHICLE_APPROACHING: { text: 'ЗАЕЗД Т/С', class: 'bg-blue-900/60 text-blue-300 border-blue-600' },
+            PLATE_IDENTIFIED: { text: 'НОМЕР РАСПОЗНАН', class: 'bg-amber-900/60 text-amber-300 border-amber-500' },
+            NOZZLE_INSERTED: { text: 'ПИСТОЛЕТ В БАКЕ', class: 'bg-teal-900/60 text-teal-300 border-teal-500' },
+            FUELING: { text: 'ИДЕТ НАЛИВ ТОПЛИВА', class: 'bg-green-900/80 text-green-300 border-green-500 animate-pulse' },
+            NOZZLE_RETURNED: { text: 'ПИСТОЛЕТ ВОЗВРАЩЕН', class: 'bg-indigo-900/60 text-indigo-300 border-indigo-500' },
+            SESSION_COMPLETE: { text: 'ЗАПРАВКА ЗАВЕРШЕНА', class: 'bg-emerald-900/80 text-emerald-300 border-emerald-400' },
+            ALARM_LOCKDOWN: { text: 'ТРЕВОГА: НАСОС ЗАБЛОКИРОВАН', class: 'bg-red-700 text-white border-red-500 animate-bounce' },
         };
 
-        const cfg = stateConfig[state] || stateConfig.IDLE;
-        badge.className = `px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider border transition-all duration-300 ${cfg.bg} ${cfg.textCol} ${cfg.border}`;
-        badge.textContent = cfg.text;
+        const conf = stateConfig[state] || stateConfig['IDLE'];
+        badge.className = `px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${conf.class}`;
+        badge.textContent = conf.text;
     }
 
-    function updateDriveAndPayCard(session, state) {
-        const cardDriver = document.getElementById('cardDriverName');
-        const cardPlate = document.getElementById('cardPlate');
-        const cardModel = document.getElementById('cardModel');
-        const cardBalance = document.getElementById('cardBalance');
-        const cardFuel = document.getElementById('cardFuelType');
-        const cardDnpStatus = document.getElementById('cardDnpStatus');
+    function updateDriveAndPayCard(session, state, detectedPlate) {
+        const elName = document.getElementById('cardDriverName');
+        const elPlate = document.getElementById('cardPlate');
+        const elModel = document.getElementById('cardModel');
+        const elBalance = document.getElementById('cardBalance');
+        const elFuel = document.getElementById('cardFuelType');
+        const elDnpStatus = document.getElementById('cardDnpStatus');
 
         if (session) {
-            if (cardDriver) cardDriver.textContent = session.driver_name;
-            if (cardPlate) cardPlate.textContent = session.plate;
-            if (cardModel) cardModel.textContent = session.model;
-            if (cardBalance) cardBalance.textContent = `${session.balance.toFixed(2)} BYN`;
-            if (cardFuel) cardFuel.textContent = `${session.fuel_type} (${session.price.toFixed(2)} BYN/л)`;
+            if (elName) elName.textContent = session.driver_name || 'Клиент';
+            if (elPlate) elPlate.textContent = session.vehicle_plate || '—';
+            if (elModel) elModel.textContent = session.car_model || '—';
+            if (elBalance) elBalance.textContent = `${(session.driver_balance || 0).toFixed(2)} BYN`;
+            if (elFuel) elFuel.textContent = `${session.fuel_type || 'АИ-95'} (${(session.price_per_liter || 2.46).toFixed(2)} BYN/л)`;
 
-            if (cardDnpStatus) {
+            if (elDnpStatus) {
                 if (session.is_drive_and_pay) {
-                    cardDnpStatus.className = 'inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/40';
-                    cardDnpStatus.textContent = 'Drive&Pay: Активен (Zero-Click)';
+                    elDnpStatus.className = 'inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/40';
+                    elDnpStatus.textContent = 'Drive&Pay: Активен (Zero-Click)';
                 } else {
-                    cardDnpStatus.className = 'inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/40';
-                    cardDnpStatus.textContent = 'Гостевой режим (Оплата на кассе)';
+                    elDnpStatus.className = 'inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40';
+                    elDnpStatus.textContent = 'Гостевой режим (Оплата на кассе)';
                 }
             }
-        } else {
-            if (cardDriver) cardDriver.textContent = '—';
-            if (cardPlate) cardPlate.textContent = '—';
-            if (cardModel) cardModel.textContent = 'Ожидание автомобиля';
-            if (cardBalance) cardBalance.textContent = '0.00 BYN';
-            if (cardFuel) cardFuel.textContent = '—';
-            if (cardDnpStatus) {
-                cardDnpStatus.className = 'inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-zinc-800 text-zinc-400 border border-zinc-700';
-                cardDnpStatus.textContent = 'Режим ожидания';
+        } else if (detectedPlate) {
+            if (elPlate) elPlate.textContent = detectedPlate;
+            if (detectedPlate === '7777 AB-7') {
+                if (elName) elName.textContent = 'Иванов И. И.';
+                if (elModel) elModel.textContent = 'VW Passat B8';
+                if (elBalance) elBalance.textContent = '150.00 BYN';
+                if (elDnpStatus) {
+                    elDnpStatus.className = 'inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/40';
+                    elDnpStatus.textContent = 'Drive&Pay: Активен (Zero-Click)';
+                }
+            } else if (detectedPlate === '1234 IE-7') {
+                if (elName) elName.textContent = 'Петров П. П.';
+                if (elModel) elModel.textContent = 'Geely Tugella';
+                if (elBalance) elBalance.textContent = '80.00 BYN';
+                if (elDnpStatus) {
+                    elDnpStatus.className = 'inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/40';
+                    elDnpStatus.textContent = 'Drive&Pay: Активен';
+                }
+            } else {
+                if (elName) elName.textContent = 'Гостевой клиент';
+                if (elModel) elModel.textContent = 'Lada Vesta';
+                if (elBalance) elBalance.textContent = '0.00 BYN';
+                if (elDnpStatus) {
+                    elDnpStatus.className = 'inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40';
+                    elDnpStatus.textContent = 'Гостевой режим (Оплата на кассе)';
+                }
             }
         }
     }
@@ -200,7 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             if (elLiters) elLiters.textContent = '0.00';
             if (elCost) elCost.textContent = '0.00 BYN';
-            if (elTarget) elTarget.textContent = '0.0 л';
+            if (elTarget) elTarget.textContent = '30.0 л';
             if (elBar) elBar.style.width = '0%';
         }
     }
@@ -231,7 +490,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (elMsg) {
-            elMsg.textContent = telemetry.safety_message || 'Мониторинг риска обрыва шланга активен.';
+            elMsg.textContent = telemetry.safety_message || 'Мониторинг риска обрыва шланга активен. Порог срабатывания: > 15 px.';
         }
 
         if (elAlarmBanner) {
@@ -245,7 +504,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 6. Simulator Controls & Action Buttons
+    // 11. Simulator Controls & Action Buttons
     const scenarioBtns = document.querySelectorAll('.scenario-btn');
     scenarioBtns.forEach((btn) => {
         btn.addEventListener('click', async () => {
@@ -286,64 +545,115 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 7. Load Audit Logs (Sessions & Incidents)
+    // 12. Audit Logs Fetch & Filter
     async function loadAuditLogs() {
         try {
-            // Load Sessions
-            const sessRes = await fetch('/api/sessions?limit=20');
-            const sessions = await sessRes.json();
-            const sessTbody = document.getElementById('sessionsTableBody');
-            if (sessTbody) {
-                sessTbody.innerHTML = sessions
-                    .map(
-                        (s) => `
-                    <tr class="border-b border-zinc-800 hover:bg-zinc-800/40 transition-colors">
-                        <td class="px-4 py-3 font-mono text-xs text-zinc-400">${s.session_uuid.slice(0, 8)}</td>
-                        <td class="px-4 py-3 font-bold text-amber-300">${s.vehicle_plate}</td>
-                        <td class="px-4 py-3 text-zinc-200">${s.fuel_type}</td>
-                        <td class="px-4 py-3 text-zinc-200">${s.dispensed_liters.toFixed(2)} л</td>
-                        <td class="px-4 py-3 font-bold text-emerald-400">${s.total_cost.toFixed(2)} BYN</td>
-                        <td class="px-4 py-3">
-                            <span class="px-2 py-0.5 text-xs rounded font-medium ${s.is_zero_click ? 'bg-green-500/20 text-green-300' : 'bg-zinc-700 text-zinc-300'}">
-                                ${s.is_zero_click ? 'Drive&Pay Zero-Click' : 'Терминал / Касса'}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3 text-xs text-zinc-400">${s.created_at}</td>
-                    </tr>
-                `
-                    )
-                    .join('');
+            const [sessRes, incRes] = await Promise.all([
+                fetch('/api/sessions/recent'),
+                fetch('/api/incidents/recent'),
+            ]);
+
+            if (sessRes.ok) {
+                const sessData = await sessRes.json();
+                cachedSessions = sessData.sessions || [];
+            }
+            if (incRes.ok) {
+                const incData = await incRes.json();
+                cachedIncidents = incData.incidents || [];
             }
 
-            // Load Incidents
-            const incRes = await fetch('/api/incidents?limit=20');
-            const incidents = await incRes.json();
-            const incTbody = document.getElementById('incidentsTableBody');
-            if (incTbody) {
-                incTbody.innerHTML = incidents
-                    .map(
-                        (inc) => `
-                    <tr class="border-b border-zinc-800 hover:bg-zinc-800/40 transition-colors">
-                        <td class="px-4 py-3">
-                            <span class="px-2 py-0.5 text-xs rounded font-bold ${inc.severity === 'CRITICAL' ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-yellow-500/20 text-yellow-300'}">
-                                ${inc.incident_type}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3 text-xs text-zinc-200">${inc.description}</td>
-                        <td class="px-4 py-3 font-mono text-xs ${inc.displacement_px > 15 ? 'text-red-400 font-bold' : 'text-zinc-300'}">
-                            ${inc.displacement_px > 0 ? `${inc.displacement_px} px` : '—'}
-                        </td>
-                        <td class="px-4 py-3 text-xs text-zinc-400">${inc.created_at}</td>
-                    </tr>
-                `
-                    )
-                    .join('');
-            }
+            renderFilteredAuditLogs();
         } catch (e) {
             console.error('Failed to load audit logs:', e);
         }
     }
 
-    // Connect on load
+    function renderFilteredAuditLogs() {
+        const searchVal = (document.getElementById('auditSearchInput')?.value || '').toLowerCase();
+        const severityFilter = document.getElementById('auditSeverityFilter')?.value || 'ALL';
+
+        // Render Sessions Table
+        const sessionsTbody = document.getElementById('sessionsTableBody');
+        if (sessionsTbody) {
+            sessionsTbody.innerHTML = '';
+            const filteredSessions = cachedSessions.filter((s) => {
+                const matchesSearch = !searchVal || (s.plate_number || '').toLowerCase().includes(searchVal);
+                let matchesSeverity = true;
+                if (severityFilter === 'ZERO_CLICK') matchesSeverity = s.is_drive_and_pay;
+                else if (severityFilter === 'GUEST') matchesSeverity = !s.is_drive_and_pay;
+                return matchesSearch && matchesSeverity;
+            });
+
+            if (filteredSessions.length === 0) {
+                sessionsTbody.innerHTML = `<tr><td colspan="8" class="px-4 py-3 text-center text-zinc-500">Нет записей по заданным фильтрам</td></tr>`;
+            } else {
+                filteredSessions.forEach((s) => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-zinc-800/50 transition-colors';
+                    const timeStr = s.created_at ? new Date(s.created_at).toLocaleTimeString('ru-RU') : '—';
+                    const dnpBadge = s.is_drive_and_pay
+                        ? `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-green-500/20 text-green-400 border border-green-500/30">Zero-Click</span>`
+                        : `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">Гость</span>`;
+
+                    row.innerHTML = `
+                        <td class="px-4 py-3 font-mono text-[11px] text-zinc-400">${s.session_uuid.slice(0, 8)}...</td>
+                        <td class="px-4 py-3 font-bold font-mono text-white">${s.plate_number}</td>
+                        <td class="px-4 py-3 text-zinc-300">${s.fuel_type}</td>
+                        <td class="px-4 py-3 font-mono text-zinc-200">${s.dispensed_liters.toFixed(2)} л</td>
+                        <td class="px-4 py-3 font-bold text-emerald-400 font-mono">${s.total_cost.toFixed(2)} BYN</td>
+                        <td class="px-4 py-3">${dnpBadge}</td>
+                        <td class="px-4 py-3 font-mono text-zinc-400">${timeStr}</td>
+                        <td class="px-4 py-3">
+                            <button onclick="document.getElementById('openReceiptBtn').click()" class="text-xs text-amber-400 hover:underline">Чек 🧾</button>
+                        </td>
+                    `;
+                    sessionsTbody.appendChild(row);
+                });
+            }
+        }
+
+        // Render Incidents Table
+        const incidentsTbody = document.getElementById('incidentsTableBody');
+        if (incidentsTbody) {
+            incidentsTbody.innerHTML = '';
+            const filteredIncidents = cachedIncidents.filter((inc) => {
+                const matchesSearch = !searchVal || (inc.description || '').toLowerCase().includes(searchVal);
+                let matchesSeverity = true;
+                if (severityFilter === 'CRITICAL') matchesSeverity = inc.severity === 'CRITICAL';
+                return matchesSearch && matchesSeverity;
+            });
+
+            if (filteredIncidents.length === 0) {
+                incidentsTbody.innerHTML = `<tr><td colspan="5" class="px-4 py-3 text-center text-zinc-500">Инцидентов не зафиксировано</td></tr>`;
+            } else {
+                filteredIncidents.forEach((inc) => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-red-950/30 transition-colors';
+                    const timeStr = inc.created_at ? new Date(inc.created_at).toLocaleTimeString('ru-RU') : '—';
+
+                    row.innerHTML = `
+                        <td class="px-4 py-3 font-bold text-red-400">${inc.incident_type}</td>
+                        <td class="px-4 py-3 text-zinc-200 text-xs">${inc.description}</td>
+                        <td class="px-4 py-3 font-bold font-mono text-red-300">${inc.displacement_px.toFixed(1)} px</td>
+                        <td class="px-4 py-3 font-mono text-zinc-400">${timeStr}</td>
+                        <td class="px-4 py-3">
+                            <button onclick="openIncidentSnapshot('1234 IE-7', ${inc.displacement_px.toFixed(1)}, '${inc.description}', '${timeStr}')" class="px-2 py-1 rounded bg-red-900/60 hover:bg-red-800 text-white font-bold text-[11px] border border-red-700">
+                                📷 Просмотр
+                            </button>
+                        </td>
+                    `;
+                    incidentsTbody.appendChild(row);
+                });
+            }
+        }
+    }
+
+    // Search and Filter Listeners
+    const auditSearch = document.getElementById('auditSearchInput');
+    const auditFilter = document.getElementById('auditSeverityFilter');
+    if (auditSearch) auditSearch.addEventListener('input', renderFilteredAuditLogs);
+    if (auditFilter) auditFilter.addEventListener('change', renderFilteredAuditLogs);
+
+    // Initial WebSocket Connection
     connectWebSocket();
 });

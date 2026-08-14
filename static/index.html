@@ -38,7 +38,7 @@
         <div class="max-w-[1600px] mx-auto px-4 lg:px-6 h-16 flex items-center justify-between">
             <!-- Brand & Station Identifier -->
             <div class="flex items-center gap-4">
-                <div class="w-9 h-9 rounded-lg bg-[#00843D] flex items-center justify-center font-black text-white text-lg tracking-wider shadow-lg shadow-[#00843D]/30">
+                <div class="w-10 h-10 rounded-xl bg-[#00843D] flex items-center justify-center font-black text-white text-lg tracking-wider shadow-lg shadow-[#00843D]/30 border border-[#00A84E]">
                     BN
                 </div>
                 <div>
@@ -46,7 +46,7 @@
                         <h1 class="font-extrabold text-base tracking-tight text-white">БЕЛОРУСНЕФТЬ <span class="text-[#FFCC00] font-normal">| SmartVision AZS</span></h1>
                         <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-[#00843D]/20 text-[#00E676] border border-[#00843D]/40">АЗС №42 (ТРК 2)</span>
                     </div>
-                    <p class="text-xs text-zinc-400">Zero-Click Заправка + Контроль обрыва шлангов + Телеметрия</p>
+                    <p class="text-xs text-zinc-400">Zero-Click Заправка + Предотвращение обрыва шлангов + ROI-аналитика</p>
                 </div>
             </div>
 
@@ -63,11 +63,16 @@
                 </button>
             </nav>
 
-            <!-- Status Badges & Sound Toggle -->
+            <!-- Status Badges & Quick Action -->
             <div class="flex items-center gap-3">
+                <button id="exportReportBtn" class="tactile-btn hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-medium text-[#FFCC00] hover:bg-zinc-800">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    <span>Экспорт ТЭО</span>
+                </button>
+
                 <button id="muteToggleBtn" class="tactile-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-medium text-zinc-300 hover:bg-zinc-800">
-                    <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
-                    <span>Звук: Вкл</span>
+                    <span id="muteIcon">🔊</span>
+                    <span id="muteText">Звук: Вкл</span>
                 </button>
 
                 <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
@@ -120,16 +125,59 @@
                             </div>
                         </div>
 
-                        <!-- Video Viewport with Canvas HUD Overlay -->
-                        <div class="video-viewport-wrapper relative">
+                        <!-- Video Viewport with Canvas HUD Overlay & Floating Glass Toolbar -->
+                        <div id="videoContainer" class="video-viewport-wrapper relative">
                             <img id="stationVideo" src="/api/video/feed" alt="Live CV Stream" class="w-full h-full object-cover">
                             <canvas id="telemetryCanvas" class="w-full h-full pointer-events-none"></canvas>
+
+                            <!-- Floating Glass HUD Controls -->
+                            <div class="hud-glass-toolbar">
+                                <button id="btnLayerPlate" class="hud-toggle-btn active" title="Включить/выключить рамку госномера">
+                                    ✓ Номер
+                                </button>
+                                <button id="btnLayerZone" class="hud-toggle-btn active" title="Включить/выключить зону ТРК">
+                                    ✓ Зона
+                                </button>
+                                <button id="btnLayerDisp" class="hud-toggle-btn active" title="Включить/выключить вектор смещения">
+                                    ✓ Смещение
+                                </button>
+                                <button id="btnSnapshot" class="hud-toggle-btn hover:text-amber-300" title="Сохранить стоп-кадр с телеметрией">
+                                    📷 Снимок
+                                </button>
+                                <button id="btnFullscreen" class="hud-toggle-btn" title="Развернуть во весь экран">
+                                    ⛶ Экран
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Interactive Scenario Scrubber Timeline Bar (0 - 50s) -->
+                        <div class="mt-3 space-y-1.5">
+                            <div class="flex items-center justify-between text-[11px] font-semibold text-zinc-400">
+                                <span class="flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-[#FFCC00] animate-pulse"></span>
+                                    <span>Временная шкала сценариев:</span>
+                                </span>
+                                <span id="timelineCurrentTimeText" class="font-mono text-zinc-200">00:00 / 00:50</span>
+                            </div>
+
+                            <div id="scenarioTimeline" class="timeline-container relative" title="Нажмите для мгновенного перехода в любую точку симуляции">
+                                <div class="timeline-segment-1">
+                                    <span class="timeline-marker-label text-emerald-300 pl-2">1. Zero-Click</span>
+                                </div>
+                                <div class="timeline-segment-2">
+                                    <span class="timeline-marker-label text-red-300 pl-2">2. Риск обрыва</span>
+                                </div>
+                                <div class="timeline-segment-3">
+                                    <span class="timeline-marker-label text-amber-300 pl-2">3. Гость</span>
+                                </div>
+                                <div id="timelineProgress" class="timeline-progress-bar"></div>
+                            </div>
                         </div>
 
                         <!-- Simulator Scenario Quick-Bar -->
-                        <div class="mt-4 pt-4 border-t border-zinc-800/80 flex flex-wrap items-center justify-between gap-2">
+                        <div class="mt-4 pt-3 border-t border-zinc-800/80 flex flex-wrap items-center justify-between gap-2">
                             <div class="flex items-center gap-1.5">
-                                <span class="text-xs font-semibold text-zinc-400 mr-2">Тестовые сценарии:</span>
+                                <span class="text-xs font-semibold text-zinc-400 mr-2">Сценарии:</span>
                                 <button data-action="scenario_1" class="scenario-btn tactile-btn px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-xs font-medium text-emerald-400 border border-zinc-700/80 flex items-center gap-1.5">
                                     <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 1. Zero-Click (7777 AB-7)
                                 </button>
@@ -144,6 +192,30 @@
                                 <button data-action="restart" class="scenario-btn tactile-btn px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-200 border border-zinc-600">
                                     Сначала ↺
                                 </button>
+                            </div>
+                        </div>
+
+                        <!-- Hardware Telemetry Status Chips -->
+                        <div class="mt-3 pt-3 border-t border-zinc-800/80 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                            <div class="telemetry-chip">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                <span class="text-zinc-400">FPS:</span>
+                                <span class="font-mono font-bold text-white">30.0 к/с</span>
+                            </div>
+                            <div class="telemetry-chip">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                <span class="text-zinc-400">CV Задержка:</span>
+                                <span class="font-mono font-bold text-white">&lt; 4.8 мс</span>
+                            </div>
+                            <div class="telemetry-chip">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                <span class="text-zinc-400">OCR Точность:</span>
+                                <span class="font-mono font-bold text-white">98.4%</span>
+                            </div>
+                            <div class="telemetry-chip">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                <span class="text-zinc-400">CAN-Bus ТРК:</span>
+                                <span class="font-mono font-bold text-emerald-400">ONLINE</span>
                             </div>
                         </div>
                     </div>
@@ -182,14 +254,18 @@
                                 <span class="text-zinc-400 block mb-1">Баланс кошелька</span>
                                 <span id="cardBalance" class="font-bold text-emerald-400 telemetry-val text-sm">150.00 BYN</span>
                             </div>
-                            <div class="col-span-2 bg-zinc-900/90 p-3 rounded-xl border border-zinc-800 flex justify-between items-center">
-                                <div>
-                                    <span class="text-zinc-400 block mb-0.5">Тип топлива:</span>
+                            <div class="col-span-2 bg-zinc-900/90 p-3 rounded-xl border border-zinc-800 space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-zinc-400">Тип топлива:</span>
                                     <span id="cardFuelType" class="font-bold text-amber-300 text-sm">АИ-95 (2.46 BYN/л)</span>
                                 </div>
-                                <span class="px-2 py-1 bg-green-950/60 text-green-400 text-[11px] font-bold rounded border border-green-800">
-                                    АВТОПРОЛИВ
-                                </span>
+                                <!-- Fuel Grade Selector Pills -->
+                                <div class="flex items-center gap-1.5 pt-1">
+                                    <button class="fuel-grade-btn active px-2.5 py-1 rounded bg-[#00843D] text-white font-bold text-[11px] border border-[#00A84E]" data-fuel="АИ-95" data-price="2.46">АИ-95</button>
+                                    <button class="fuel-grade-btn px-2.5 py-1 rounded bg-zinc-800 text-zinc-300 font-bold text-[11px] border border-zinc-700 hover:bg-zinc-700" data-fuel="АИ-98" data-price="2.68">АИ-98</button>
+                                    <button class="fuel-grade-btn px-2.5 py-1 rounded bg-zinc-800 text-zinc-300 font-bold text-[11px] border border-zinc-700 hover:bg-zinc-700" data-fuel="АИ-92" data-price="2.36">АИ-92</button>
+                                    <button class="fuel-grade-btn px-2.5 py-1 rounded bg-zinc-800 text-zinc-300 font-bold text-[11px] border border-zinc-700 hover:bg-zinc-700" data-fuel="ДТ" data-price="2.46">ДТ</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -212,9 +288,14 @@
                         </div>
 
                         <!-- Progress Bar -->
-                        <div class="w-full bg-zinc-800 rounded-full h-3 overflow-hidden border border-zinc-700">
+                        <div class="w-full bg-zinc-800 rounded-full h-3 overflow-hidden border border-zinc-700 mb-3">
                             <div id="fuelProgressBar" class="bg-gradient-to-r from-[#00843D] to-[#00E676] h-full w-0 transition-all duration-200"></div>
                         </div>
+
+                        <!-- Open Receipt Button -->
+                        <button id="openReceiptBtn" class="tactile-btn w-full py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 text-xs font-semibold text-zinc-300 flex items-center justify-center gap-1.5">
+                            <span>🧾 Электронный фискальный чек</span>
+                        </button>
                     </div>
 
                     <!-- Safety & Hose Protection Panel + E-STOP -->
@@ -252,12 +333,33 @@
         <!-- ========================================================================= -->
         <section id="tab-roi" class="tab-panel hidden space-y-6">
             <!-- Header Banner -->
-            <div class="bg-gradient-to-r from-[#00843D]/20 via-[#18181B] to-[#18181B] p-6 rounded-2xl border border-[#00843D]/40">
-                <h2 class="text-xl font-extrabold text-white">Интерактивный расчет финансово-экономического эффекта</h2>
-                <p class="text-xs text-zinc-300 mt-1 max-w-3xl">
-                    Модель окупаемости внедрения системы компьютерного зрения «SmartVision AZS» для сети АЗС «Белоруснефть».
-                    Учитывает ликвидацию убытков от обрывов пистолетов и увеличение маржинального оборота нетопливного ритейла.
-                </p>
+            <div class="bg-gradient-to-r from-[#00843D]/20 via-[#18181B] to-[#18181B] p-6 rounded-2xl border border-[#00843D]/40 flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-extrabold text-white">Интерактивный расчет финансово-экономического эффекта</h2>
+                    <p class="text-xs text-zinc-300 mt-1 max-w-3xl">
+                        Модель окупаемости внедрения системы компьютерного зрения «SmartVision AZS» для сети АЗС «Белоруснефть».
+                        Учитывает ликвидацию убытков от обрывов пистолетов и увеличение маржинального оборота нетопливного ритейла.
+                    </p>
+                </div>
+                <button onclick="window.print()" class="tactile-btn px-4 py-2 rounded-xl bg-[#00843D] hover:bg-[#005F2B] text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-[#00843D]/30 border border-[#00A84E]">
+                    <span>Печать / Сохранить в PDF 📄</span>
+                </button>
+            </div>
+
+            <!-- Implementation Scale Presets (1-Click) -->
+            <div class="bg-[#18181B] p-4 rounded-2xl border border-zinc-800 flex flex-wrap items-center justify-between gap-3">
+                <span class="text-xs font-bold uppercase tracking-wider text-zinc-400">Масштаб внедрения:</span>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="presetPilot" class="scale-preset-btn tactile-btn px-3.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-xs font-semibold text-zinc-300 border border-zinc-700">
+                        🌱 Пилот (1 АЗС / 4 ТРК)
+                    </button>
+                    <button id="presetRegion" class="scale-preset-btn tactile-btn px-3.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-xs font-semibold text-zinc-300 border border-zinc-700">
+                        🏢 Область (60 АЗС / 360 ТРК)
+                    </button>
+                    <button id="presetNetwork" class="scale-preset-btn active tactile-btn px-3.5 py-1.5 rounded-lg bg-[#00843D] text-white font-bold text-xs border border-[#00A84E] shadow-md">
+                        🇧🇾 Вся сеть Белоруснефть (570 АЗС)
+                    </button>
+                </div>
             </div>
 
             <!-- Dynamic KPI Cards -->
@@ -298,6 +400,40 @@
                 </div>
             </div>
 
+            <!-- Queue Reduction & Peak Capacity Widget -->
+            <div class="bg-[#18181B] p-6 rounded-2xl border border-zinc-800 shadow-xl">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-200">
+                        Эффект сокращения очередей в часы пик (Zero-Click vs Традиционная заправка)
+                    </h3>
+                    <span class="text-xs font-bold text-emerald-400">+24% пропускная способность</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div class="bg-zinc-900 p-4 rounded-xl border border-zinc-800">
+                        <div class="flex justify-between mb-2">
+                            <span class="text-zinc-400">Традиционная оплата на кассе:</span>
+                            <span class="font-bold text-red-400 font-mono">210 сек (3.5 мин)</span>
+                        </div>
+                        <div class="w-full bg-zinc-800 h-2.5 rounded-full overflow-hidden">
+                            <div class="bg-red-500 h-full w-[100%]"></div>
+                        </div>
+                        <span class="text-[11px] text-zinc-500 mt-2 block">Очередь на колонке, простой ТРК во время похода в здание АЗС.</span>
+                    </div>
+
+                    <div class="bg-zinc-900 p-4 rounded-xl border border-zinc-800">
+                        <div class="flex justify-between mb-2">
+                            <span class="text-zinc-400">SmartVision Zero-Click Drive&Pay:</span>
+                            <span class="font-bold text-emerald-400 font-mono">45 сек (0.75 мин) [ -78% ]</span>
+                        </div>
+                        <div class="w-full bg-zinc-800 h-2.5 rounded-full overflow-hidden">
+                            <div class="bg-emerald-500 h-full w-[22%]"></div>
+                        </div>
+                        <span class="text-[11px] text-emerald-400 mt-2 block">Автоматический старт и списание. Клиент заправляется и сразу выезжает.</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Sliders & Visual Charts Grid -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
@@ -314,7 +450,7 @@
                             <span class="text-zinc-300">Количество АЗС в сети:</span>
                             <span id="val_station_count" class="text-white font-bold telemetry-val">570</span>
                         </div>
-                        <input id="slider_station_count" type="range" min="50" max="1000" step="10" value="570" class="w-full">
+                        <input id="slider_station_count" type="range" min="1" max="1000" step="1" value="570" class="w-full">
                     </div>
 
                     <!-- Slider 2: Daily Traffic -->
@@ -332,7 +468,7 @@
                             <span class="text-zinc-300">Предотвращено обрывов шлангов (сеть/год):</span>
                             <span id="val_hose_incidents" class="text-white font-bold telemetry-val">160</span>
                         </div>
-                        <input id="slider_hose_incidents" type="range" min="10" max="600" step="10" value="160" class="w-full">
+                        <input id="slider_hose_incidents" type="range" min="1" max="600" step="1" value="160" class="w-full">
                     </div>
 
                     <!-- Slider 4: Hose Damage Cost -->
@@ -388,11 +524,28 @@
         <!-- TAB 3: AUDIT LOG (SESSIONS & INCIDENTS) -->
         <!-- ========================================================================= -->
         <section id="tab-audit" class="tab-panel hidden space-y-6">
+            <!-- Search & Filter Controls -->
+            <div class="bg-[#18181B] p-4 rounded-2xl border border-zinc-800 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-3 flex-1 min-w-[280px]">
+                    <span class="text-xs text-zinc-400">Поиск:</span>
+                    <input id="auditSearchInput" type="text" placeholder="Поиск по госномеру (7777 AB-7, 1234 IE-7, 5678 MH-7)..." class="flex-1 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500">
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-zinc-400">Фильтр:</span>
+                    <select id="auditSeverityFilter" class="bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500">
+                        <option value="ALL">Все события</option>
+                        <option value="CRITICAL">Критический обрыв (CRITICAL)</option>
+                        <option value="ZERO_CLICK">Zero-Click Заправка</option>
+                        <option value="GUEST">Гостевой режим</option>
+                    </select>
+                </div>
+            </div>
+
             <!-- Recent Fueling Sessions Table -->
             <div class="bg-[#18181B] rounded-2xl border border-zinc-800 p-6 shadow-xl">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-sm font-extrabold uppercase tracking-wider text-white">Журнал сессий заправки ТРК</h3>
-                    <span class="text-xs text-zinc-400">Последние 20 транзакций</span>
+                    <span class="text-xs text-zinc-400">Последние транзакции</span>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs">
@@ -405,6 +558,7 @@
                                 <th class="px-4 py-3">Сумма</th>
                                 <th class="px-4 py-3">Режим</th>
                                 <th class="px-4 py-3">Время</th>
+                                <th class="px-4 py-3">Чек</th>
                             </tr>
                         </thead>
                         <tbody id="sessionsTableBody" class="divide-y divide-zinc-800 text-zinc-300">
@@ -430,6 +584,7 @@
                                 <th class="px-4 py-3">Описание ситуации</th>
                                 <th class="px-4 py-3">Смещение</th>
                                 <th class="px-4 py-3">Временная метка</th>
+                                <th class="px-4 py-3">Стоп-кадр</th>
                             </tr>
                         </thead>
                         <tbody id="incidentsTableBody" class="divide-y divide-zinc-800 text-zinc-300">
@@ -441,6 +596,90 @@
         </section>
 
     </main>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL 1: ELECTRONIC FISCAL RECEIPT (Drive&Pay) -->
+    <!-- ========================================================================= -->
+    <div id="receiptModal" class="modal-overlay">
+        <div class="receipt-paper p-6 relative">
+            <!-- Close Button -->
+            <button id="closeReceiptBtn" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-zinc-200 hover:bg-zinc-300 text-zinc-700 flex items-center justify-center font-bold text-sm">
+                ✕
+            </button>
+
+            <!-- Receipt Header -->
+            <div class="text-center pb-4 border-b-2 border-dashed border-zinc-300">
+                <div class="inline-block px-3 py-1 rounded bg-[#00843D] text-white font-extrabold text-xs tracking-wider mb-2">
+                    ПО «БЕЛОРУСНЕФТЬ»
+                </div>
+                <h3 class="font-bold text-sm text-zinc-800">АЗС №42 (г. Минск, пр. Победителей 102)</h3>
+                <p class="text-[11px] text-zinc-500">УНП: 100145267 • ТРК №2 • Касса №1</p>
+            </div>
+
+            <!-- Receipt Items Body -->
+            <div class="py-4 space-y-2 text-xs border-b-2 border-dashed border-zinc-300">
+                <div class="flex justify-between">
+                    <span class="text-zinc-600">Чек №:</span>
+                    <span id="receiptNumber" class="font-mono font-bold text-zinc-900">REC-BN-7777AB7</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-zinc-600">Дата и время:</span>
+                    <span id="receiptDate" class="font-mono text-zinc-800">14.08.2026 17:15:30</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-zinc-600">Госномер Т/С:</span>
+                    <span id="receiptPlate" class="font-mono font-bold text-zinc-900">7777 AB-7</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-zinc-600">Клиент / Карта:</span>
+                    <span id="receiptDriver" class="font-medium text-zinc-800">Иванов И. И.</span>
+                </div>
+                <div class="flex justify-between pt-2">
+                    <span id="receiptFuelItem" class="font-bold text-zinc-900">Топливо АИ-95 (30.00 л × 2.46 BYN):</span>
+                    <span id="receiptTotalVal" class="font-bold text-zinc-900">73.80 BYN</span>
+                </div>
+                <div class="flex justify-between text-[#00843D] font-bold">
+                    <span>Начислено бонусов «Заправка»:</span>
+                    <span id="receiptBonus">+7.38 БОНУСОВ</span>
+                </div>
+            </div>
+
+            <!-- QR Code & Barcode Section -->
+            <div class="pt-4 text-center">
+                <div class="w-32 h-32 mx-auto bg-zinc-100 border border-zinc-300 rounded-lg p-2 flex items-center justify-center">
+                    <canvas id="receiptQrCanvas" width="112" height="112"></canvas>
+                </div>
+                <p class="text-[10px] text-zinc-500 mt-2">Электронный чек фискализирован через СКНО.<br>Спасибо, что выбрали сеть «Белоруснефть»!</p>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="mt-4 flex gap-2">
+                <button onclick="window.print()" class="flex-1 py-2 rounded-lg bg-[#00843D] hover:bg-[#005F2B] text-white font-bold text-xs uppercase tracking-wide">
+                    Распечатать
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- MODAL 2: INCIDENT SNAPSHOT VIEWER -->
+    <!-- ========================================================================= -->
+    <div id="snapshotModal" class="modal-overlay">
+        <div class="bg-[#18181B] border border-zinc-700 rounded-2xl max-w-2xl w-full p-6 relative shadow-2xl">
+            <button id="closeSnapshotBtn" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center font-bold text-sm">
+                ✕
+            </button>
+            <h3 class="text-base font-extrabold text-red-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <span>⚠ Стоп-кадр инцидента безопасности</span>
+            </h3>
+            <div class="aspect-video bg-black rounded-xl overflow-hidden mb-4 border border-zinc-800">
+                <img id="snapshotModalImg" src="" alt="Стоп-кадр инцидента" class="w-full h-full object-contain">
+            </div>
+            <div id="snapshotModalDetails" class="grid grid-cols-2 gap-3 text-xs">
+                <!-- Injected dynamically -->
+            </div>
+        </div>
+    </div>
 
     <!-- Footer -->
     <footer class="bg-[#18181B] border-t border-zinc-800 py-4 text-center text-xs text-zinc-500">

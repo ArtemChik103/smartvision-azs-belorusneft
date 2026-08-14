@@ -1,18 +1,69 @@
 /**
  * Interactive ROI Calculator Widget for SmartVision AZS.
- * Live recalculation of financial effect, payback horizon, and Chart.js visualizations.
+ * Live recalculation of financial effect, payback horizon, scale presets, and Chart.js visualizations.
  */
 class ROICalculatorWidget {
     constructor() {
         this.cashflowChart = null;
         this.structureChart = null;
+        this.currentCapex = 380000.0;
         this.init();
     }
 
     init() {
         this.bindSliders();
+        this.bindPresets();
         this.initCharts();
         this.recalculate();
+    }
+
+    bindPresets() {
+        const btnPilot = document.getElementById('presetPilot');
+        const btnRegion = document.getElementById('presetRegion');
+        const btnNetwork = document.getElementById('presetNetwork');
+
+        const presetBtns = [btnPilot, btnRegion, btnNetwork];
+
+        const setPreset = (stations, traffic, incidents, capex, activeBtn) => {
+            presetBtns.forEach((b) => {
+                if (b) {
+                    b.className = 'scale-preset-btn tactile-btn px-3.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-xs font-semibold text-zinc-300 border border-zinc-700';
+                }
+            });
+            if (activeBtn) {
+                activeBtn.className = 'scale-preset-btn active tactile-btn px-3.5 py-1.5 rounded-lg bg-[#00843D] text-white font-bold text-xs border border-[#00A84E] shadow-md';
+            }
+
+            const sStation = document.getElementById('slider_station_count');
+            const sTraffic = document.getElementById('slider_daily_traffic');
+            const sIncidents = document.getElementById('slider_hose_incidents');
+
+            if (sStation) {
+                sStation.value = stations;
+                this.updateSliderLabel('station_count', stations);
+            }
+            if (sTraffic) {
+                sTraffic.value = traffic;
+                this.updateSliderLabel('daily_traffic', traffic);
+            }
+            if (sIncidents) {
+                sIncidents.value = incidents;
+                this.updateSliderLabel('hose_incidents', incidents);
+            }
+
+            this.currentCapex = capex;
+            this.recalculate();
+        };
+
+        if (btnPilot) {
+            btnPilot.addEventListener('click', () => setPreset(1, 750, 1, 6500.0, btnPilot));
+        }
+        if (btnRegion) {
+            btnRegion.addEventListener('click', () => setPreset(60, 750, 25, 85000.0, btnRegion));
+        }
+        if (btnNetwork) {
+            btnNetwork.addEventListener('click', () => setPreset(570, 750, 160, 380000.0, btnNetwork));
+        }
     }
 
     bindSliders() {
@@ -57,7 +108,7 @@ class ROICalculatorWidget {
             retail_growth_pct: parseFloat(document.getElementById('slider_retail_growth')?.value || 4.0),
             retail_avg_check: 12.50,
             retail_margin_pct: 28.0,
-            system_capex: 380000.0,
+            system_capex: this.currentCapex,
             annual_opex_pct: 8.0,
         };
     }
@@ -106,42 +157,48 @@ class ROICalculatorWidget {
     }
 
     updateUI(summary) {
-        const fmt = (v) => Math.round(v).toLocaleString('ru-RU');
+        const setVal = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val;
+        };
 
-        const elHose = document.getElementById('kpi_hose_savings');
-        const elRetail = document.getElementById('kpi_retail_profit');
-        const elTotal = document.getElementById('kpi_total_effect');
-        const elPayback = document.getElementById('kpi_payback');
-        const elRoi5 = document.getElementById('kpi_roi_5y');
+        const formatBYN = (num) => `${Math.round(num).toLocaleString('ru-RU')} BYN`;
 
-        if (elHose) elHose.textContent = `${fmt(summary.annual_hose_savings)} BYN`;
-        if (elRetail) elRetail.textContent = `${fmt(summary.annual_retail_extra_profit)} BYN`;
-        if (elTotal) elTotal.textContent = `${fmt(summary.annual_net_benefit || summary.annual_gross_benefit)} BYN`;
-        if (elPayback) elPayback.textContent = `${summary.payback_months} мес.`;
-        if (elRoi5) elRoi5.textContent = `+${summary.roi_5_year_pct}%`;
+        setVal('kpi_hose_savings', formatBYN(summary.annual_hose_savings));
+        setVal('kpi_retail_profit', formatBYN(summary.annual_retail_extra_profit));
+        setVal('kpi_total_effect', formatBYN(summary.annual_net_benefit));
+        setVal('kpi_payback', `${summary.payback_months.toFixed(1)} мес.`);
+        setVal('kpi_roi_5y', `+${Math.round(summary.roi_5_year_pct)}%`);
     }
 
     initCharts() {
-        // Chart 1: 5-Year Cumulative Cash Flow
-        const ctx1 = document.getElementById('chart_cashflow')?.getContext('2d');
-        if (ctx1 && window.Chart) {
+        // Chart 1: Cash Flow
+        const ctx1 = document.getElementById('chart_cashflow');
+        if (ctx1) {
             this.cashflowChart = new Chart(ctx1, {
                 type: 'bar',
                 data: {
-                    labels: ['Старт', 'Год 1', 'Год 2', 'Год 3', 'Год 4', 'Год 5'],
+                    labels: ['Год 0 (Capex)', 'Год 1', 'Год 2', 'Год 3', 'Год 4', 'Год 5'],
                     datasets: [
                         {
                             label: 'Накопленный денежный поток (BYN)',
-                            data: [0, 0, 0, 0, 0, 0],
+                            data: [-380000, 218505, 817010, 1415515, 2014020, 2612525],
                             backgroundColor: [
-                                'rgba(239, 68, 68, 0.7)',
-                                'rgba(0, 132, 61, 0.7)',
-                                'rgba(0, 132, 61, 0.7)',
-                                'rgba(0, 132, 61, 0.8)',
-                                'rgba(0, 132, 61, 0.9)',
-                                'rgba(0, 132, 61, 1.0)',
+                                'rgba(239, 68, 68, 0.75)',
+                                'rgba(52, 211, 153, 0.75)',
+                                'rgba(16, 185, 129, 0.85)',
+                                'rgba(5, 150, 105, 0.9)',
+                                'rgba(4, 120, 87, 0.95)',
+                                'rgba(6, 95, 70, 1)',
                             ],
-                            borderColor: '#00843D',
+                            borderColor: [
+                                '#EF4444',
+                                '#34D399',
+                                '#10B981',
+                                '#059669',
+                                '#047857',
+                                '#065F46',
+                            ],
                             borderWidth: 1.5,
                             borderRadius: 6,
                         },
@@ -154,40 +211,41 @@ class ROICalculatorWidget {
                         legend: { display: false },
                         tooltip: {
                             callbacks: {
-                                label: (ctx) => `Накопленный эффект: ${Math.round(ctx.parsed.y).toLocaleString('ru-RU')} BYN`,
+                                label: (item) => ` ${Math.round(item.raw).toLocaleString('ru-RU')} BYN`,
                             },
                         },
                     },
                     scales: {
                         y: {
-                            grid: { color: 'rgba(255, 255, 255, 0.08)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.06)' },
                             ticks: {
                                 color: '#94A3B8',
-                                callback: (v) => `${(v / 1000).toFixed(0)}k`,
+                                font: { family: 'monospace' },
+                                callback: (v) => `${(v / 1000).toFixed(0)}k BYN`,
                             },
                         },
                         x: {
                             grid: { display: false },
-                            ticks: { color: '#94A3B8' },
+                            ticks: { color: '#CBD5E1', font: { weight: 'bold' } },
                         },
                     },
                 },
             });
         }
 
-        // Chart 2: Structure of Annual Economic Effect
-        const ctx2 = document.getElementById('chart_structure')?.getContext('2d');
-        if (ctx2 && window.Chart) {
+        // Chart 2: Structure
+        const ctx2 = document.getElementById('chart_structure');
+        if (ctx2) {
             this.structureChart = new Chart(ctx2, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Предотвращение обрывов шлангов', 'Прирост чека ритейла (ликвидация очередей)'],
+                    labels: ['Экономия на обрывах шлангов', 'Дополнительная маржа ритейла', 'Операционные расходы (Opex)'],
                     datasets: [
                         {
-                            data: [192000, 436900],
-                            backgroundColor: ['#FFCC00', '#00843D'],
-                            borderColor: '#0F172A',
-                            borderWidth: 3,
+                            data: [192000, 436905, 30400],
+                            backgroundColor: ['#FFCC00', '#00843D', '#EF4444'],
+                            borderWidth: 2,
+                            borderColor: '#18181B',
                         },
                     ],
                 },
@@ -197,13 +255,15 @@ class ROICalculatorWidget {
                     plugins: {
                         legend: {
                             position: 'bottom',
-                            labels: {
-                                color: '#E2E8F0',
-                                font: { size: 12 },
-                                padding: 15,
+                            labels: { color: '#E2E8F0', boxWidth: 12, font: { size: 11 } },
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (item) => ` ${item.label}: ${Math.round(item.raw).toLocaleString('ru-RU')} BYN`,
                             },
                         },
                     },
+                    cutout: '65%',
                 },
             });
         }
@@ -211,18 +271,17 @@ class ROICalculatorWidget {
 
     updateCharts(summary) {
         if (this.cashflowChart && summary.cash_flow_years) {
-            const dataPts = summary.cash_flow_years.map((y) => y.cumulative);
-            this.cashflowChart.data.datasets[0].data = dataPts;
-            this.cashflowChart.data.datasets[0].backgroundColor = dataPts.map((v) =>
-                v < 0 ? 'rgba(239, 68, 68, 0.7)' : 'rgba(0, 132, 61, 0.85)'
-            );
+            const dataVals = summary.cash_flow_years.map((y) => Math.round(y.cumulative));
+            this.cashflowChart.data.datasets[0].data = dataVals;
             this.cashflowChart.update();
         }
 
         if (this.structureChart) {
+            const opexVal = summary.system_capex ? summary.system_capex * 0.08 : 30400;
             this.structureChart.data.datasets[0].data = [
-                summary.annual_hose_savings,
-                summary.annual_retail_extra_profit,
+                Math.round(summary.annual_hose_savings),
+                Math.round(summary.annual_retail_extra_profit),
+                Math.round(opexVal),
             ];
             this.structureChart.update();
         }
