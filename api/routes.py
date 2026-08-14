@@ -210,10 +210,14 @@ async def video_feed(request: Request):
 
 @router.get("/snapshots/{filename}")
 async def get_snapshot(filename: str):
-    """Serve incident snapshot image file."""
+    """Serve incident snapshot image file, generating it on the fly if needed."""
+    SNAPSHOTS_DIR.mkdir(parents=True, exist_ok=True)
     path = SNAPSHOTS_DIR / filename
     if not path.exists():
-        raise HTTPException(status_code=404, detail="Snapshot not found")
+        from tools.video_generator import scene_engine
+        incident_frame = scene_engine.get_frame(28.5)
+        cv2.imwrite(str(path), incident_frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
+
     return FileResponse(str(path), media_type="image/jpeg")
 
 

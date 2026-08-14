@@ -208,30 +208,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    window.openReceiptModal = (sessionData) => {
+        let plate = '7777 AB-7';
+        let driver = 'Иванов И. И.';
+        let fuel = currentFuelType || 'АИ-95';
+        let liters = 30.00;
+        let unitPrice = currentFuelPrice || 2.46;
+        let cost = 73.80;
+        let dateStr = new Date().toLocaleDateString('ru-RU') + ' ' + new Date().toLocaleTimeString('ru-RU');
+
+        if (sessionData) {
+            plate = sessionData.plate_number || plate;
+            fuel = sessionData.fuel_type || fuel;
+            liters = sessionData.dispensed_liters > 0 ? sessionData.dispensed_liters : 30.0;
+            cost = sessionData.total_cost > 0 ? sessionData.total_cost : (liters * unitPrice);
+            driver = sessionData.driver_name || (sessionData.is_drive_and_pay ? 'Иванов И. И.' : 'Гостевой клиент');
+            if (sessionData.created_at) {
+                const d = new Date(sessionData.created_at);
+                dateStr = d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU');
+            }
+        } else {
+            // Read from dashboard
+            const curLiters = parseFloat(document.getElementById('dispensedLiters')?.textContent || '0');
+            const curCost = parseFloat(document.getElementById('dispensedCost')?.textContent || '0');
+            const curPlate = document.getElementById('cardPlate')?.textContent;
+            const curDriver = document.getElementById('cardDriverName')?.textContent;
+
+            if (curPlate && curPlate !== '—') plate = curPlate;
+            if (curDriver) driver = curDriver;
+            if (curLiters > 0) liters = curLiters;
+            if (curCost > 0) cost = curCost;
+            else cost = liters * unitPrice;
+        }
+
+        unitPrice = cost / Math.max(liters, 0.01);
+        const receiptId = `REC-BN-${plate.replace(/[^A-Z0-9]/gi, '')}-${Math.floor(Date.now() / 1000)}`;
+
+        document.getElementById('receiptNumber').textContent = receiptId;
+        document.getElementById('receiptDate').textContent = dateStr;
+        document.getElementById('receiptPlate').textContent = plate;
+        document.getElementById('receiptDriver').textContent = driver;
+        document.getElementById('receiptFuelItem').textContent = `Топливо ${fuel} (${liters.toFixed(2)} л × ${unitPrice.toFixed(2)} BYN):`;
+        document.getElementById('receiptTotalVal').textContent = `${cost.toFixed(2)} BYN`;
+
+        const bonusNum = (cost * 0.10).toFixed(2);
+        document.getElementById('receiptBonus').textContent = `+${bonusNum} БОНУСОВ`;
+
+        drawReceiptQr(receiptId);
+        receiptModal?.classList.add('open');
+    };
+
     if (openReceiptBtn) {
-        openReceiptBtn.addEventListener('click', () => {
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('ru-RU') + ' ' + now.toLocaleTimeString('ru-RU');
-            const plate = document.getElementById('cardPlate')?.textContent || '7777 AB-7';
-            const driver = document.getElementById('cardDriverName')?.textContent || 'Иванов И. И.';
-            const cost = document.getElementById('dispensedCost')?.textContent || '73.80 BYN';
-            const liters = document.getElementById('dispensedLiters')?.textContent || '30.00';
-            const receiptId = `REC-BN-${plate.replace(/[^A-Z0-9]/gi, '')}-${Math.floor(Date.now() / 1000)}`;
-
-            document.getElementById('receiptNumber').textContent = receiptId;
-            document.getElementById('receiptDate').textContent = dateStr;
-            document.getElementById('receiptPlate').textContent = plate;
-            document.getElementById('receiptDriver').textContent = driver;
-            document.getElementById('receiptFuelItem').textContent = `Топливо ${currentFuelType} (${liters} л × ${currentFuelPrice.toFixed(2)} BYN):`;
-            document.getElementById('receiptTotalVal').textContent = cost;
-
-            const costNum = parseFloat(cost) || 73.8;
-            const bonusNum = (costNum * 0.1).toFixed(2);
-            document.getElementById('receiptBonus').textContent = `+${bonusNum} БОНУСОВ`;
-
-            drawReceiptQr(receiptId);
-            receiptModal?.classList.add('open');
-        });
+        openReceiptBtn.addEventListener('click', () => window.openReceiptModal());
     }
 
     if (closeReceiptBtn) {
@@ -264,7 +292,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const modalImg = document.getElementById('snapshotModalImg');
         const modalDetails = document.getElementById('snapshotModalDetails');
         if (modalImg) {
-            modalImg.src = '/api/video/feed';
+            // Serve the static snapshot JPEG
+            modalImg.src = '/api/snapshots/incident_hose_tear.jpg';
         }
         if (modalDetails) {
             modalDetails.innerHTML = `
@@ -587,7 +616,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (filteredSessions.length === 0) {
                 sessionsTbody.innerHTML = `<tr><td colspan="8" class="px-4 py-3 text-center text-zinc-500">Нет записей по заданным фильтрам</td></tr>`;
             } else {
-                filteredSessions.forEach((s) => {
+                filteredSessions.forEach((s, idx) => {
                     const row = document.createElement('tr');
                     row.className = 'hover:bg-zinc-800/50 transition-colors';
                     const timeStr = s.created_at ? new Date(s.created_at).toLocaleTimeString('ru-RU') : '—';
@@ -604,10 +633,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td class="px-4 py-3">${dnpBadge}</td>
                         <td class="px-4 py-3 font-mono text-zinc-400">${timeStr}</td>
                         <td class="px-4 py-3">
-                            <button onclick="document.getElementById('openReceiptBtn').click()" class="text-xs text-amber-400 hover:underline">Чек 🧾</button>
+                            <button class="row-receipt-btn text-xs text-amber-400 font-bold hover:underline" data-idx="${idx}">Чек 🧾</button>
                         </td>
                     `;
                     sessionsTbody.appendChild(row);
+                });
+
+                document.querySelectorAll('.row-receipt-btn').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        const idx = parseInt(btn.getAttribute('data-idx'));
+                        window.openReceiptModal(filteredSessions[idx]);
+                    });
                 });
             }
         }
@@ -626,7 +662,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (filteredIncidents.length === 0) {
                 incidentsTbody.innerHTML = `<tr><td colspan="5" class="px-4 py-3 text-center text-zinc-500">Инцидентов не зафиксировано</td></tr>`;
             } else {
-                filteredIncidents.forEach((inc) => {
+                filteredIncidents.forEach((inc, idx) => {
                     const row = document.createElement('tr');
                     row.className = 'hover:bg-red-950/30 transition-colors';
                     const timeStr = inc.created_at ? new Date(inc.created_at).toLocaleTimeString('ru-RU') : '—';
@@ -637,12 +673,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td class="px-4 py-3 font-bold font-mono text-red-300">${inc.displacement_px.toFixed(1)} px</td>
                         <td class="px-4 py-3 font-mono text-zinc-400">${timeStr}</td>
                         <td class="px-4 py-3">
-                            <button onclick="openIncidentSnapshot('1234 IE-7', ${inc.displacement_px.toFixed(1)}, '${inc.description}', '${timeStr}')" class="px-2 py-1 rounded bg-red-900/60 hover:bg-red-800 text-white font-bold text-[11px] border border-red-700">
+                            <button class="row-snapshot-btn px-2 py-1 rounded bg-red-900/60 hover:bg-red-800 text-white font-bold text-[11px] border border-red-700" data-idx="${idx}">
                                 📷 Просмотр
                             </button>
                         </td>
                     `;
                     incidentsTbody.appendChild(row);
+                });
+
+                document.querySelectorAll('.row-snapshot-btn').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        const idx = parseInt(btn.getAttribute('data-idx'));
+                        const inc = filteredIncidents[idx];
+                        const timeStr = inc.created_at ? new Date(inc.created_at).toLocaleTimeString('ru-RU') : '—';
+                        window.openIncidentSnapshot('1234 IE-7', inc.displacement_px, inc.description, timeStr);
+                    });
                 });
             }
         }
