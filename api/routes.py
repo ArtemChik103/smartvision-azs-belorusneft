@@ -234,7 +234,8 @@ async def get_snapshot(filename: str):
 @router.get("/users")
 async def get_users(db: AsyncSession = Depends(get_db)) -> List[Dict[str, Any]]:
     """List registered users and their Drive&Pay vehicles."""
-    result = await db.execute(select(User))
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(select(User).options(selectinload(User.vehicles)))
     users = result.scalars().all()
     return [
         {
