@@ -184,6 +184,7 @@ app.add_middleware(
 # Static Files & APIs
 static_dir = BASE_DIR / "static"
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+app.mount("/data", StaticFiles(directory=str(DATA_DIR)), name="data")
 
 app.include_router(api_router)
 app.include_router(ws_router)

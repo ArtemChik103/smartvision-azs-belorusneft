@@ -122,8 +122,8 @@
 
                         <!-- Video Viewport with Canvas HUD Overlay -->
                         <div class="video-viewport-wrapper relative">
-                            <img id="mjpegFeed" src="/api/video/feed" alt="Video stream" class="w-full h-full object-cover">
-                            <canvas id="telemetryCanvas" class="w-full h-full"></canvas>
+                            <video id="stationVideo" src="/data/test_scenarios.mp4" autoplay loop muted playsinline class="w-full h-full object-cover"></video>
+                            <canvas id="telemetryCanvas" class="w-full h-full pointer-events-none"></canvas>
                         </div>
 
                         <!-- Simulator Scenario Quick-Bar -->
