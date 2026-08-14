@@ -201,15 +201,21 @@ class FuelingFSM:
         except Exception as e:
             logger.error(f"Error persisting session to DB: {e}")
 
-    def update_fuel_flow(self, delta_liters: float = 0.1) -> None:
+    def update_fuel_flow(self, current_liters: Optional[float] = None, delta_liters: float = 0.1) -> None:
         """Called periodically while FUELING to simulate fuel delivery."""
         if self.state != FuelingState.FUELING or not self.active_session or self.pump_lock:
             return
 
-        self.active_session.dispensed_liters = min(
-            self.active_session.target_liters,
-            round(self.active_session.dispensed_liters + delta_liters, 2),
-        )
+        if current_liters is not None:
+            self.active_session.dispensed_liters = min(
+                self.active_session.target_liters,
+                max(0.0, round(current_liters, 2)),
+            )
+        else:
+            self.active_session.dispensed_liters = min(
+                self.active_session.target_liters,
+                round(self.active_session.dispensed_liters + delta_liters, 2),
+            )
         self.active_session.total_cost = round(
             self.active_session.dispensed_liters * self.active_session.price_per_liter, 2
         )
@@ -218,6 +224,12 @@ class FuelingFSM:
         """Finalize fueling session, generate receipt and commit settlement."""
         if not self.active_session:
             return
+
+        if self.active_session.dispensed_liters > 0:
+            self.active_session.dispensed_liters = self.active_session.target_liters
+            self.active_session.total_cost = round(
+                self.active_session.dispensed_liters * self.active_session.price_per_liter, 2
+            )
 
         self.active_session.end_time = time.time()
         self.active_session.receipt_id = f"REC-BN-{self.active_session.vehicle_plate.replace(' ', '')}-{int(time.time())}"
