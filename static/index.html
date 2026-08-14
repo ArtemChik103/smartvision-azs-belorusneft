@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartVision AZS — Белоруснефть | Монитор оператора и ROI</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        bnGreen: '#00843D',
+                        bnGreenDark: '#005F2B',
+                        bnYellow: '#FFCC00',
+                        bnGraphite: '#18181B',
+                        bnSlate: '#0F172A',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <!-- Google Fonts Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+</head>
+<body class="bg-[#090D16] text-slate-100 min-h-screen flex flex-col antialiased">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-[#18181B] border-b border-zinc-800 sticky top-0 z-50">
+        <div class="max-w-[1600px] mx-auto px-4 lg:px-6 h-16 flex items-center justify-between">
+            <!-- Brand & Station Identifier -->
+            <div class="flex items-center gap-4">
+                <div class="w-9 h-9 rounded-lg bg-[#00843D] flex items-center justify-center font-black text-white text-lg tracking-wider shadow-lg shadow-[#00843D]/30">
+                    BN
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-extrabold text-base tracking-tight text-white">БЕЛОРУСНЕФТЬ <span class="text-[#FFCC00] font-normal">| SmartVision AZS</span></h1>
+                        <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-[#00843D]/20 text-[#00E676] border border-[#00843D]/40">АЗС №42 (ТРК 2)</span>
+                    </div>
+                    <p class="text-xs text-zinc-400">Zero-Click Заправка + Контроль обрыва шлангов + Телеметрия</p>
+                </div>
+            </div>
+
+            <!-- Tabs Navigation -->
+            <nav class="hidden md:flex items-center bg-zinc-900/90 p-1 rounded-xl border border-zinc-800 gap-1">
+                <button data-tab="tab-operator" class="tab-btn active px-4 py-2 rounded-lg text-xs font-semibold tracking-wide border border-transparent transition-all">
+                    Монитор оператора
+                </button>
+                <button data-tab="tab-roi" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold tracking-wide border border-transparent transition-all text-zinc-400 hover:text-white">
+                    Экономический эффект (ROI)
+                </button>
+                <button data-tab="tab-audit" class="tab-btn px-4 py-2 rounded-lg text-xs font-semibold tracking-wide border border-transparent transition-all text-zinc-400 hover:text-white">
+                    Журнал транзакций и безопасности
+                </button>
+            </nav>
+
+            <!-- Status Badges & Sound Toggle -->
+            <div class="flex items-center gap-3">
+                <button id="muteToggleBtn" class="tactile-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-medium text-zinc-300 hover:bg-zinc-800">
+                    <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+                    <span>Звук: Вкл</span>
+                </button>
+
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
+                    <span id="wsStatusBadge" class="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+                    <span id="wsStatusText" class="font-mono text-zinc-300 font-medium">ONLINE</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-[1600px] mx-auto px-4 lg:px-6 py-6 flex-1 w-full">
+
+        <!-- ========================================================================= -->
+        <!-- TAB 1: OPERATOR COCKPIT MONITOR -->
+        <!-- ========================================================================= -->
+        <section id="tab-operator" class="tab-panel">
+            <!-- Emergency Alert Banner (Shown during alarm) -->
+            <div id="emergencyAlarmBanner" class="hidden mb-6 p-4 rounded-xl bg-red-950/80 border-2 border-red-500 alarm-pulse-border flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center text-white font-black text-xl animate-bounce">
+                        ⚠
+                    </div>
+                    <div>
+                        <h2 class="text-base font-black text-red-100 uppercase tracking-wide">КРИТИЧЕСКИЙ РИСК ОБРЫВА ШЛАНГА (ТРК №2)!</h2>
+                        <p id="alarmDetailsText" class="text-xs text-red-200 mt-0.5">Смещение автомобиля зафиксировано при подключенном пистолете. Насос мгновенно заблокирован.</p>
+                    </div>
+                </div>
+                <button id="resetAlarmBtn" class="tactile-btn px-4 py-2 rounded-lg bg-red-700 hover:bg-red-600 text-white font-bold text-xs uppercase tracking-wider border border-red-400 shadow-lg">
+                    Сбросить тревогу и разблокировать
+                </button>
+            </div>
+
+            <!-- Top Cockpit Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- Left Column: Live Video Feed & Scenario Toolbar (8 cols) -->
+                <div class="lg:col-span-8 space-y-4">
+                    <!-- Video Card -->
+                    <div class="bg-[#18181B] rounded-2xl border border-zinc-800 p-4 shadow-xl">
+                        <!-- Top Video Header -->
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-300">Камера Компьютерного Зрения • Пост ТРК 2</h3>
+                            </div>
+                            <!-- FSM State Badge -->
+                            <div id="fsmStateBadge" class="px-3.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-zinc-800 text-zinc-300 border border-zinc-700">
+                                ОЖИДАНИЕ Т/С
+                            </div>
+                        </div>
+
+                        <!-- Video Viewport with Canvas HUD Overlay -->
+                        <div class="video-viewport-wrapper relative">
+                            <img id="mjpegFeed" src="/api/video/feed" alt="Video stream" class="w-full h-full object-cover">
+                            <canvas id="telemetryCanvas" class="w-full h-full"></canvas>
+                        </div>
+
+                        <!-- Simulator Scenario Quick-Bar -->
+                        <div class="mt-4 pt-4 border-t border-zinc-800/80 flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-xs font-semibold text-zinc-400 mr-2">Тестовые сценарии:</span>
+                                <button data-action="scenario_1" class="scenario-btn tactile-btn px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-xs font-medium text-emerald-400 border border-zinc-700/80 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 1. Zero-Click (7777 AB-7)
+                                </button>
+                                <button data-action="scenario_2" class="scenario-btn tactile-btn px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-xs font-medium text-red-400 border border-zinc-700/80 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-red-500"></span> 2. Риск обрыва (1234 IE-7)
+                                </button>
+                                <button data-action="scenario_3" class="scenario-btn tactile-btn px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-xs font-medium text-amber-300 border border-zinc-700/80 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-amber-400"></span> 3. Гость (5678 MH-7)
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button data-action="restart" class="scenario-btn tactile-btn px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-200 border border-zinc-600">
+                                    Сначала ↺
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Drive&Pay Card, Dispenser Meter & Safety Panel (4 cols) -->
+                <div class="lg:col-span-4 space-y-6">
+
+                    <!-- Drive & Pay Driver Card -->
+                    <div class="bg-[#18181B] rounded-2xl border border-zinc-800 p-5 shadow-xl">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400">Профиль Drive&Pay (Zero-Click)</h3>
+                            <span id="cardDnpStatus" class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/40">
+                                Drive&Pay: Активен
+                            </span>
+                        </div>
+
+                        <!-- Driver Info -->
+                        <div class="flex items-center gap-3.5 mb-4 pb-4 border-b border-zinc-800">
+                            <div class="w-12 h-12 rounded-xl bg-[#00843D]/20 border border-[#00843D]/50 flex items-center justify-center text-[#00E676] font-bold text-lg">
+                                ИИ
+                            </div>
+                            <div>
+                                <h4 id="cardDriverName" class="font-extrabold text-base text-white">Иванов И. И.</h4>
+                                <p id="cardPlate" class="font-mono text-sm font-bold text-[#FFCC00]">7777 AB-7</p>
+                            </div>
+                        </div>
+
+                        <!-- Vehicle & Balance Grid -->
+                        <div class="grid grid-cols-2 gap-3 text-xs">
+                            <div class="bg-zinc-900/90 p-3 rounded-xl border border-zinc-800">
+                                <span class="text-zinc-400 block mb-1">Автомобиль</span>
+                                <span id="cardModel" class="font-semibold text-zinc-200 block truncate">VW Passat B8</span>
+                            </div>
+                            <div class="bg-zinc-900/90 p-3 rounded-xl border border-zinc-800">
+                                <span class="text-zinc-400 block mb-1">Баланс кошелька</span>
+                                <span id="cardBalance" class="font-bold text-emerald-400 telemetry-val text-sm">150.00 BYN</span>
+                            </div>
+                            <div class="col-span-2 bg-zinc-900/90 p-3 rounded-xl border border-zinc-800 flex justify-between items-center">
+                                <div>
+                                    <span class="text-zinc-400 block mb-0.5">Тип топлива:</span>
+                                    <span id="cardFuelType" class="font-bold text-amber-300 text-sm">АИ-95 (2.46 BYN/л)</span>
+                                </div>
+                                <span class="px-2 py-1 bg-green-950/60 text-green-400 text-[11px] font-bold rounded border border-green-800">
+                                    АВТОПРОЛИВ
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Fuel Dispenser Meter -->
+                    <div class="bg-[#18181B] rounded-2xl border border-zinc-800 p-5 shadow-xl">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400">Налив топлива в реальном времени</h3>
+                            <span class="text-xs text-zinc-400">Цель: <b id="targetLiters" class="text-white telemetry-val">30.0 л</b></span>
+                        </div>
+
+                        <!-- Big Digital Meter -->
+                        <div class="bg-[#0F172A] p-4 rounded-xl border border-zinc-800 mb-3 text-center">
+                            <div class="text-4xl font-black text-white telemetry-val tracking-tight">
+                                <span id="dispensedLiters">0.00</span> <span class="text-base text-zinc-400 font-normal">Литров</span>
+                            </div>
+                            <div class="text-lg font-bold text-emerald-400 telemetry-val mt-1">
+                                <span id="dispensedCost">0.00 BYN</span>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="w-full bg-zinc-800 rounded-full h-3 overflow-hidden border border-zinc-700">
+                            <div id="fuelProgressBar" class="bg-gradient-to-r from-[#00843D] to-[#00E676] h-full w-0 transition-all duration-200"></div>
+                        </div>
+                    </div>
+
+                    <!-- Safety & Hose Protection Panel + E-STOP -->
+                    <div class="bg-[#18181B] rounded-2xl border border-zinc-800 p-5 shadow-xl">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400">Мониторинг безопасности</h3>
+                            <span id="pumpLockStatus" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-600/30 text-emerald-300 border border-emerald-500/50">
+                                НАСОС: РАЗРЕШЕН
+                            </span>
+                        </div>
+
+                        <div class="space-y-2 text-xs mb-4">
+                            <div class="flex justify-between py-1.5 px-3 bg-zinc-900 rounded-lg border border-zinc-800">
+                                <span class="text-zinc-400">Смещение автомобиля (300мс):</span>
+                                <span id="safetyDisplacementVal" class="font-bold telemetry-val text-emerald-400">0.0 px / 300мс</span>
+                            </div>
+                            <div class="p-2.5 bg-zinc-900/60 rounded-lg border border-zinc-800/80 text-zinc-300 text-[11px] leading-relaxed">
+                                <span id="safetyStatusMsg">Мониторинг риска обрыва шланга активен. Порог срабатывания: &gt; 15 px.</span>
+                            </div>
+                        </div>
+
+                        <!-- Big Tactile E-STOP Button -->
+                        <button id="estopButton" class="estop-button tactile-btn w-full py-3.5 rounded-xl font-black text-white text-sm uppercase tracking-wider flex items-center justify-center gap-2 border border-red-500/50">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            Аварийный останов (E-STOP)
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 2: INTERACTIVE ROI CALCULATOR -->
+        <!-- ========================================================================= -->
+        <section id="tab-roi" class="tab-panel hidden space-y-6">
+            <!-- Header Banner -->
+            <div class="bg-gradient-to-r from-[#00843D]/20 via-[#18181B] to-[#18181B] p-6 rounded-2xl border border-[#00843D]/40">
+                <h2 class="text-xl font-extrabold text-white">Интерактивный расчет финансово-экономического эффекта</h2>
+                <p class="text-xs text-zinc-300 mt-1 max-w-3xl">
+                    Модель окупаемости внедрения системы компьютерного зрения «SmartVision AZS» для сети АЗС «Белоруснефть».
+                    Учитывает ликвидацию убытков от обрывов пистолетов и увеличение маржинального оборота нетопливного ритейла.
+                </p>
+            </div>
+
+            <!-- Dynamic KPI Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <!-- Card 1: Hose Damage Savings -->
+                <div class="bg-[#18181B] p-5 rounded-2xl border border-zinc-800 shadow-lg">
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">Экономия на обрывах</span>
+                    <div id="kpi_hose_savings" class="text-2xl font-black text-[#FFCC00] telemetry-val">192 000 BYN</div>
+                    <span class="text-[11px] text-zinc-400 mt-1 block">в год на оборудовании</span>
+                </div>
+
+                <!-- Card 2: Retail Margin Expansion -->
+                <div class="bg-[#18181B] p-5 rounded-2xl border border-zinc-800 shadow-lg">
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">Доход от ритейла</span>
+                    <div id="kpi_retail_profit" class="text-2xl font-black text-[#00E676] telemetry-val">436 905 BYN</div>
+                    <span class="text-[11px] text-zinc-400 mt-1 block">ликвидация очередей</span>
+                </div>
+
+                <!-- Card 3: Total Annual Net Effect -->
+                <div class="bg-[#18181B] p-5 rounded-2xl border border-[#00843D]/50 bg-[#00843D]/10 shadow-lg">
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-[#00E676] block mb-1">Совокупный эффект</span>
+                    <div id="kpi_total_effect" class="text-2xl font-black text-white telemetry-val">598 505 BYN</div>
+                    <span class="text-[11px] text-zinc-300 mt-1 block">чистый эффект / год</span>
+                </div>
+
+                <!-- Card 4: Payback Period -->
+                <div class="bg-[#18181B] p-5 rounded-2xl border border-zinc-800 shadow-lg">
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">Срок окупаемости</span>
+                    <div id="kpi_payback" class="text-2xl font-black text-amber-300 telemetry-val">7.6 мес.</div>
+                    <span class="text-[11px] text-zinc-400 mt-1 block">полный возврат Capex</span>
+                </div>
+
+                <!-- Card 5: 5-Year ROI -->
+                <div class="bg-[#18181B] p-5 rounded-2xl border border-zinc-800 shadow-lg">
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1">5-летний ROI</span>
+                    <div id="kpi_roi_5y" class="text-2xl font-black text-blue-400 telemetry-val">+687%</div>
+                    <span class="text-[11px] text-zinc-400 mt-1 block">рентабельность инвестиций</span>
+                </div>
+            </div>
+
+            <!-- Sliders & Visual Charts Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- Left Column: Interactive Parameter Sliders (5 cols) -->
+                <div class="lg:col-span-5 bg-[#18181B] p-6 rounded-2xl border border-zinc-800 shadow-xl space-y-5">
+                    <h3 class="text-sm font-extrabold uppercase tracking-wider text-zinc-200 pb-3 border-b border-zinc-800 flex items-center justify-between">
+                        <span>Параметры сети и модели</span>
+                        <span class="text-xs font-normal text-[#FFCC00]">Динамический пересчет</span>
+                    </h3>
+
+                    <!-- Slider 1: Station Count -->
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold mb-2">
+                            <span class="text-zinc-300">Количество АЗС в сети:</span>
+                            <span id="val_station_count" class="text-white font-bold telemetry-val">570</span>
+                        </div>
+                        <input id="slider_station_count" type="range" min="50" max="1000" step="10" value="570" class="w-full">
+                    </div>
+
+                    <!-- Slider 2: Daily Traffic -->
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold mb-2">
+                            <span class="text-zinc-300">Среднесуточный трафик на 1 АЗС:</span>
+                            <span id="val_daily_traffic" class="text-white font-bold telemetry-val">750</span>
+                        </div>
+                        <input id="slider_daily_traffic" type="range" min="100" max="2500" step="50" value="750" class="w-full">
+                    </div>
+
+                    <!-- Slider 3: Hose Incidents Prevented -->
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold mb-2">
+                            <span class="text-zinc-300">Предотвращено обрывов шлангов (сеть/год):</span>
+                            <span id="val_hose_incidents" class="text-white font-bold telemetry-val">160</span>
+                        </div>
+                        <input id="slider_hose_incidents" type="range" min="10" max="600" step="10" value="160" class="w-full">
+                    </div>
+
+                    <!-- Slider 4: Hose Damage Cost -->
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold mb-2">
+                            <span class="text-zinc-300">Средний ущерб от одного обрыва:</span>
+                            <span id="val_hose_cost" class="text-white font-bold telemetry-val">1 200 BYN</span>
+                        </div>
+                        <input id="slider_hose_cost" type="range" min="300" max="3000" step="50" value="1200" class="w-full">
+                    </div>
+
+                    <!-- Slider 5: Retail Growth -->
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold mb-2">
+                            <span class="text-zinc-300">Рост продаж нетопливного ритейла:</span>
+                            <span id="val_retail_growth" class="text-[#00E676] font-bold telemetry-val">+4.0%</span>
+                        </div>
+                        <input id="slider_retail_growth" type="range" min="0.5" max="15.0" step="0.5" value="4.0" class="w-full">
+                    </div>
+
+                    <div class="p-3 bg-zinc-900/80 rounded-xl border border-zinc-800 text-[11px] text-zinc-400 leading-relaxed">
+                        <b>Базовые параметры Capex/Opex:</b> Оценка затрат на оснащение сети — 380 000 BYN. Ежегодный Opex серверов/ПО — 8%.
+                    </div>
+                </div>
+
+                <!-- Right Column: Charts (7 cols) -->
+                <div class="lg:col-span-7 space-y-6">
+                    <!-- Chart 1: 5-Year Cash Flow Bar -->
+                    <div class="bg-[#18181B] p-6 rounded-2xl border border-zinc-800 shadow-xl">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-300 mb-4">
+                            Накопленный финансовый поток (5 лет внедрения)
+                        </h3>
+                        <div class="h-64">
+                            <canvas id="chart_cashflow"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Chart 2: Effect Breakdown Doughnut -->
+                    <div class="bg-[#18181B] p-6 rounded-2xl border border-zinc-800 shadow-xl">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-300 mb-4">
+                            Структура годового экономического эффекта
+                        </h3>
+                        <div class="h-56">
+                            <canvas id="chart_structure"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 3: AUDIT LOG (SESSIONS & INCIDENTS) -->
+        <!-- ========================================================================= -->
+        <section id="tab-audit" class="tab-panel hidden space-y-6">
+            <!-- Recent Fueling Sessions Table -->
+            <div class="bg-[#18181B] rounded-2xl border border-zinc-800 p-6 shadow-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-extrabold uppercase tracking-wider text-white">Журнал сессий заправки ТРК</h3>
+                    <span class="text-xs text-zinc-400">Последние 20 транзакций</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-zinc-900/90 text-zinc-400 uppercase tracking-wider border-b border-zinc-800">
+                            <tr>
+                                <th class="px-4 py-3">UUID</th>
+                                <th class="px-4 py-3">Госномер</th>
+                                <th class="px-4 py-3">Топливо</th>
+                                <th class="px-4 py-3">Объем</th>
+                                <th class="px-4 py-3">Сумма</th>
+                                <th class="px-4 py-3">Режим</th>
+                                <th class="px-4 py-3">Время</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessionsTableBody" class="divide-y divide-zinc-800 text-zinc-300">
+                            <!-- Populated dynamically via app.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Incident Safety Logs -->
+            <div class="bg-[#18181B] rounded-2xl border border-zinc-800 p-6 shadow-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-extrabold uppercase tracking-wider text-red-400 flex items-center gap-2">
+                        <span>Журнал инцидентов и безопасности</span>
+                    </h3>
+                    <span class="text-xs text-zinc-400">Срабатывания E-STOP и защита от обрыва</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-zinc-900/90 text-zinc-400 uppercase tracking-wider border-b border-zinc-800">
+                            <tr>
+                                <th class="px-4 py-3">Тип инцидента</th>
+                                <th class="px-4 py-3">Описание ситуации</th>
+                                <th class="px-4 py-3">Смещение</th>
+                                <th class="px-4 py-3">Временная метка</th>
+                            </tr>
+                        </thead>
+                        <tbody id="incidentsTableBody" class="divide-y divide-zinc-800 text-zinc-300">
+                            <!-- Populated dynamically via app.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-[#18181B] border-t border-zinc-800 py-4 text-center text-xs text-zinc-500">
+        SmartVision AZS v1.0.0 • ПО автоматизации и видеоаналитики АЗС «Белоруснефть» • 2026
+    </footer>
+
+    <!-- Scripts -->
+    <script src="/static/js/audio_alerts.js"></script>
+    <script src="/static/js/canvas_render.js"></script>
+    <script src="/static/js/roi_widget.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

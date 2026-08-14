@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.db
+*.db-journal
+*.log
+.venv/
+env/
+yolov8n.pt
+data/snapshots/*
+!data/snapshots/.gitkeep

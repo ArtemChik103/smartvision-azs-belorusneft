@@ -1,0 +1,132 @@
+/* 
+ * Custom Styles for SmartVision AZS - Belorusneft Cockpit
+ * Brand Palette: Green #00843D, Yellow #FFCC00, Graphite #18181B, Slate #0F172A
+ */
+
+:root {
+    --bn-green: #00843D;
+    --bn-green-dark: #005F2B;
+    --bn-yellow: #FFCC00;
+    --bn-yellow-hover: #E6B800;
+    --bn-graphite: #18181B;
+    --bn-slate: #0F172A;
+    --bn-slate-dark: #090D16;
+}
+
+body {
+    background-color: var(--bn-slate-dark);
+    color: #F1F5F9;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #18181B;
+}
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #00843D;
+}
+
+/* Tab Active State */
+.tab-btn.active {
+    background-color: var(--bn-green);
+    color: #FFFFFF;
+    border-color: #00A84E;
+    box-shadow: 0 0 15px rgba(0, 132, 61, 0.35);
+}
+
+/* Video & Canvas Container */
+.video-viewport-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background-color: #000000;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+}
+
+.video-viewport-wrapper img,
+.video-viewport-wrapper canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+}
+
+/* Tactile Buttons */
+.tactile-btn {
+    transition: all 0.15s ease;
+    user-select: none;
+}
+.tactile-btn:active {
+    transform: scale(0.97);
+}
+
+/* E-STOP Button */
+.estop-button {
+    background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
+    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+.estop-button:hover {
+    background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.estop-button:active {
+    transform: translateY(2px) scale(0.98);
+}
+
+/* Custom Sliders */
+input[type=range] {
+    -webkit-appearance: none;
+    background: #334155;
+    height: 6px;
+    border-radius: 3px;
+    outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--bn-yellow);
+    border: 2px solid #18181B;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(255, 204, 0, 0.6);
+    transition: transform 0.1s ease;
+}
+input[type=range]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+/* Pulsing Emergency Border */
+@keyframes emergencyPulse {
+    0%, 100% {
+        border-color: #EF4444;
+        box-shadow: 0 0 25px rgba(239, 68, 68, 0.7);
+    }
+    50% {
+        border-color: #F59E0B;
+        box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+    }
+}
+.alarm-pulse-border {
+    animation: emergencyPulse 1s infinite;
+}
+
+/* Monospace font for telemetry numbers */
+.telemetry-val {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
