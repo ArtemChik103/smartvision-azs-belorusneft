@@ -303,6 +303,99 @@ document.addEventListener('DOMContentLoaded', () => {
         snapshotModal?.classList.add('open');
     };
 
+    // 8.5. Executive TEO Feasibility Report Modal
+    const teoModal = document.getElementById('teoModal');
+    const exportReportBtn = document.getElementById('exportReportBtn');
+    const closeTeoBtn = document.getElementById('closeTeoBtn');
+    const btnPrintTeoPdf = document.getElementById('btnPrintTeoPdf');
+    const btnDownloadTeoCsv = document.getElementById('btnDownloadTeoCsv');
+
+    window.openTeoModal = () => {
+        const hoseKpi = document.getElementById('kpi_hose_savings')?.textContent || '192 000 BYN';
+        const retailKpi = document.getElementById('kpi_retail_profit')?.textContent || '21 845 250 BYN';
+        const netKpi = document.getElementById('kpi_total_effect')?.textContent || '22 006 850 BYN';
+        const paybackKpi = document.getElementById('kpi_payback')?.textContent || '< 1 мес.';
+        const roiKpi = document.getElementById('kpi_roi_5y')?.textContent || '+28 856%';
+        const stationsVal = document.getElementById('slider_station_count')?.value || '570';
+
+        const elScale = document.getElementById('teoScaleVal');
+        const elNet = document.getElementById('teoAnnualNetVal');
+        const elPayback = document.getElementById('teoPaybackVal');
+        const elRoi = document.getElementById('teoRoiVal');
+        const elHose = document.getElementById('teoHoseVal');
+        const elRetail = document.getElementById('teoRetailVal');
+        const elCapex = document.getElementById('teoCapexVal');
+
+        if (elScale) elScale.textContent = `${stationsVal} АЗС`;
+        if (elNet) elNet.textContent = netKpi;
+        if (elPayback) elPayback.textContent = paybackKpi;
+        if (elRoi) elRoi.textContent = roiKpi;
+        if (elHose) elHose.textContent = `${hoseKpi} / год`;
+        if (elRetail) elRetail.textContent = `${retailKpi} / год`;
+        if (elCapex) {
+            const stationsNum = parseInt(stationsVal) || 570;
+            const capexNum = stationsNum === 570 ? 380000 : (stationsNum === 60 ? 85000 : (stationsNum === 1 ? 6500 : stationsNum * 666));
+            elCapex.textContent = `${capexNum.toLocaleString('ru-RU')} BYN`;
+        }
+
+        teoModal?.classList.add('open');
+    };
+
+    if (exportReportBtn) {
+        exportReportBtn.addEventListener('click', () => {
+            window.openTeoModal();
+        });
+    }
+
+    if (closeTeoBtn) {
+        closeTeoBtn.addEventListener('click', () => {
+            teoModal?.classList.remove('open');
+        });
+    }
+
+    if (teoModal) {
+        teoModal.addEventListener('click', (e) => {
+            if (e.target === teoModal) teoModal.classList.remove('open');
+        });
+    }
+
+    if (btnPrintTeoPdf) {
+        btnPrintTeoPdf.addEventListener('click', () => {
+            window.print();
+        });
+    }
+
+    if (btnDownloadTeoCsv) {
+        btnDownloadTeoCsv.addEventListener('click', () => {
+            const stationsVal = document.getElementById('slider_station_count')?.value || '570';
+            const hoseKpi = document.getElementById('kpi_hose_savings')?.textContent || '192000 BYN';
+            const retailKpi = document.getElementById('kpi_retail_profit')?.textContent || '21845250 BYN';
+            const netKpi = document.getElementById('kpi_total_effect')?.textContent || '22006850 BYN';
+            const paybackKpi = document.getElementById('kpi_payback')?.textContent || '0.2 мес.';
+            const roiKpi = document.getElementById('kpi_roi_5y')?.textContent || '+28856%';
+
+            const csvContent = "\uFEFF" + 
+                "Параметр;Значение;Единица измерения\n" +
+                `Масштаб внедрения;${stationsVal};АЗС сети ПО «Белоруснефть»\n` +
+                `Экономия на обрывах шлангов;${hoseKpi.replace(/\s+BYN/g, '').replace(/\s+/g, '')};BYN/год\n` +
+                `Маржинальная прибыль ритейла;${retailKpi.replace(/\s+BYN/g, '').replace(/\s+/g, '')};BYN/год\n` +
+                `Совокупный годовой чистый эффект;${netKpi.replace(/\s+BYN/g, '').replace(/\s+/g, '')};BYN/год\n` +
+                `Срок окупаемости;${paybackKpi};мес.\n` +
+                `5-летний ROI;${roiKpi};%\n` +
+                "Сокращение времени заправки;-78;% (с 210с до 45с)\n" +
+                "Рост пропускной способности;+24;%\n";
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `TEO_SmartVision_Belorusneft_${Date.now()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    }
+
     // 9. WebSocket Client Setup
     function connectWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';

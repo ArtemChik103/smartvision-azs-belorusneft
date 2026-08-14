@@ -681,6 +681,79 @@
         </div>
     </div>
 
+    <!-- ========================================================================= -->
+    <!-- MODAL 3: EXECUTIVE TEO FEASIBILITY REPORT MODAL -->
+    <!-- ========================================================================= -->
+    <div id="teoModal" class="modal-overlay">
+        <div class="bg-[#18181B] border border-zinc-700 rounded-2xl max-w-3xl w-full p-6 relative shadow-2xl overflow-y-auto max-h-[90vh]">
+            <button id="closeTeoBtn" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 flex items-center justify-center font-bold text-sm">
+                ✕
+            </button>
+
+            <!-- Header -->
+            <div class="flex items-center gap-3 mb-4 pb-4 border-b border-zinc-800">
+                <div class="w-10 h-10 rounded-xl bg-[#00843D] flex items-center justify-center text-white font-black text-lg">
+                    BN
+                </div>
+                <div>
+                    <h3 class="text-base font-black text-white uppercase tracking-wide">Технико-экономическое обоснование (ТЭО)</h3>
+                    <p class="text-xs text-zinc-400">Внедрение программно-аппаратного комплекса SmartVision AZS в ПО «Белоруснефть»</p>
+                </div>
+            </div>
+
+            <!-- Executive Summary Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                <div class="bg-zinc-900/90 p-3 rounded-xl border border-zinc-800">
+                    <span class="text-[11px] text-zinc-400 block mb-1">Масштаб внедрения</span>
+                    <span id="teoScaleVal" class="text-sm font-bold text-white font-mono">570 АЗС</span>
+                </div>
+                <div class="bg-zinc-900/90 p-3 rounded-xl border border-zinc-800">
+                    <span class="text-[11px] text-zinc-400 block mb-1">Годовой чистый эффект</span>
+                    <span id="teoAnnualNetVal" class="text-sm font-bold text-emerald-400 font-mono">22.0 млн BYN</span>
+                </div>
+                <div class="bg-zinc-900/90 p-3 rounded-xl border border-zinc-800">
+                    <span class="text-[11px] text-zinc-400 block mb-1">Срок окупаемости</span>
+                    <span id="teoPaybackVal" class="text-sm font-bold text-amber-300 font-mono">&lt; 1 месяца</span>
+                </div>
+                <div class="bg-zinc-900/90 p-3 rounded-xl border border-zinc-800">
+                    <span class="text-[11px] text-zinc-400 block mb-1">5-летний ROI</span>
+                    <span id="teoRoiVal" class="text-sm font-bold text-[#00E676] font-mono">+28 856%</span>
+                </div>
+            </div>
+
+            <!-- Detailed Breakdown Table -->
+            <div class="bg-zinc-900/60 p-4 rounded-xl border border-zinc-800 mb-5 space-y-2 text-xs">
+                <h4 class="font-bold text-zinc-300 uppercase text-[11px] tracking-wider mb-2">Структура экономического эффекта:</h4>
+                <div class="flex justify-between py-1 border-b border-zinc-800/60 text-zinc-300">
+                    <span>1. Предотвращение обрывов шлангов и повреждений ТРК:</span>
+                    <span id="teoHoseVal" class="font-mono font-bold text-white">192 000 BYN / год</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-zinc-800/60 text-zinc-300">
+                    <span>2. Маржинальная прибыль кафе и магазина (Zero-Click +24% пропускная способность):</span>
+                    <span id="teoRetailVal" class="font-mono font-bold text-emerald-400">21 845 250 BYN / год</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-zinc-800/60 text-zinc-300">
+                    <span>3. Оценка капитальных затрат (CAPEX) на сеть:</span>
+                    <span id="teoCapexVal" class="font-mono font-bold text-amber-300">380 000 BYN</span>
+                </div>
+                <div class="flex justify-between py-1 text-zinc-300">
+                    <span>4. Сокращение времени обслуживания у колонки (с 210с до 45с):</span>
+                    <span class="font-mono font-bold text-emerald-400">-78% времени (-2.75 мин/авто)</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                <button id="btnPrintTeoPdf" class="flex-1 py-2.5 rounded-xl bg-[#00843D] hover:bg-[#005F2B] text-white font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-green-900/30">
+                    <span>📄 Печать / Сохранить в PDF</span>
+                </button>
+                <button id="btnDownloadTeoCsv" class="flex-1 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-amber-300 font-bold text-xs uppercase tracking-wide flex items-center justify-center gap-2 border border-zinc-700">
+                    <span>📊 Скачать модель (Excel / CSV)</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="bg-[#18181B] border-t border-zinc-800 py-4 text-center text-xs text-zinc-500">
         SmartVision AZS v1.0.0 • ПО автоматизации и видеоаналитики АЗС «Белоруснефть» • 2026
