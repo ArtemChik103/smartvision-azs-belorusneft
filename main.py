@@ -97,6 +97,10 @@ async def video_pipeline_worker(app: FastAPI):
                     except Exception as e:
                         logger.error(f"Error logging incident to DB: {e}")
         else:
+            # If alarm cleared in safety engine, unlock FSM
+            if fsm.state == FuelingState.ALARM_LOCKDOWN:
+                fsm.reset_alarm()
+
             # Normal Flow State Progression
             if fsm.state == FuelingState.IDLE:
                 if plate_str:

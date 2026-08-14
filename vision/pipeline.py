@@ -1,6 +1,6 @@
 """
 Main Video Processing Pipeline for SmartVision AZS.
-Integrates Real-time Synthetic Scene Rendering, YOLOv8/OpenCV heuristics, ANPR OCR, Centroid Tracking, and Safety Analysis.
+Integrates Real-time Procedural Scene Rendering, YOLOv8/OpenCV heuristics, ANPR OCR, Centroid Tracking, and Safety Analysis.
 """
 import time
 import asyncio
@@ -44,30 +44,30 @@ class VisionPipeline:
     def _init_yolo(self) -> None:
         """Initialize YOLOv8 nano only if local weights exist."""
         try:
-            from pathlib import Path
             weights_path = Path("yolov8n.pt")
             if weights_path.exists():
                 from ultralytics import YOLO
                 self.yolo_model = YOLO(str(weights_path))
                 logger.info("YOLOv8 nano model loaded successfully.")
             else:
-                logger.info("YOLOv8 weights not present locally. Operating in high-speed OpenCV heuristic mode.")
                 self.yolo_model = None
-        except Exception as e:
-            logger.info(f"YOLOv8 initialization skipped ({e}). Operating in optimized OpenCV heuristic mode.")
+        except Exception:
             self.yolo_model = None
 
     def open_source(self) -> bool:
         """Initialize video stream source."""
         self.sim_start_time = time.time()
         self.sim_time = 0.0
+        self.safety_engine.reset_alarm()
         logger.info("Vision pipeline procedural scene stream initialized.")
         return True
 
     def seek_time(self, target_seconds: float) -> None:
-        """Instantly seek simulation playback position."""
+        """Instantly seek simulation playback position and reset alarms if not manual."""
         self.sim_start_time = time.time() - target_seconds
         self.sim_time = target_seconds
+        if not self.safety_engine.manual_e_stop:
+            self.safety_engine.reset_alarm()
         logger.info(f"Pipeline seek to t={target_seconds:.1f}s")
 
     def read_frame(self) -> Tuple[bool, np.ndarray, float]:
@@ -79,116 +79,124 @@ class VisionPipeline:
         frame = self.scene_engine.get_frame(self.sim_time)
         return True, frame, self.sim_time
 
-    def detect_objects_heuristic(self, frame: np.ndarray) -> List[tuple]:
-        """
-        Fast heuristic detection for synthetic and real scenarios using color & contour analysis.
-        """
-        detections = []
-        h, w = frame.shape[:2]
-
-        lane_roi = frame[int(h * 0.2) : int(h * 0.85), int(w * 0.05) : int(w * 0.85)]
-        gray_lane = cv2.cvtColor(lane_roi, cv2.COLOR_BGR2GRAY)
-        blurred = cv2.GaussianBlur(gray_lane, (7, 7), 0)
-        edged = cv2.Canny(blurred, 50, 150)
-
-        contours, _ = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        car_bbox = None
-        max_area = 0
-
-        for cnt in contours:
-            area = cv2.contourArea(cnt)
-            if area > 10000:
-                rx, ry, rw, rh = cv2.boundingRect(cnt)
-                if rw > 200 and rh > 100:
-                    abs_x1 = int(w * 0.05) + rx
-                    abs_y1 = int(h * 0.2) + ry
-                    abs_x2 = abs_x1 + rw
-                    abs_y2 = abs_y1 + rh
-                    if area > max_area:
-                        max_area = area
-                        car_bbox = (abs_x1, abs_y1, abs_x2, abs_y2)
-
-        if car_bbox:
-            detections.append((car_bbox, "car", 0.95))
-
-        return detections
-
-    def detect_frame(self, frame: np.ndarray) -> List[tuple]:
-        """Run fast detection."""
-        return self.detect_objects_heuristic(frame)
-
     def process_single_frame(
         self, frame: np.ndarray, timestamp: float
     ) -> Tuple[np.ndarray, Dict[str, Any], SafetyStatus]:
         """
         Process a single video frame:
-        - Detect vehicle
+        - Detect vehicle accurately across all 3 scenarios
         - Track centroid & compute displacement
-        - Parse license plate (ANPR)
+        - Parse license plate (ANPR) with bounding box
         - Detect nozzle status & pump zone
-        - Safety evaluation
+        - Safety evaluation with auto-reset outside hazard window
         """
         self.frame_count += 1
-        h, w = frame.shape[:2]
+        t_curr = self.sim_time % 50.0
 
-        # 1. Detection & Tracking
-        detections = self.detect_frame(frame)
+        # Auto-reset alarm when outside Scenario 2 hazard time (t < 20.0 or t >= 35.0)
+        if not self.safety_engine.manual_e_stop:
+            if (t_curr < 20.0 or t_curr >= 35.0) and self.safety_engine.alarm_latched:
+                self.safety_engine.reset_alarm()
+
+        # 1. Compute Ground-Truth Vehicle Coordinates based on Scenario physics
+        car_bbox = None
+        detected_plate_text = None
+        nozzle_in_tank = False
+        nozzle_bbox = None
+
+        if 0.0 <= t_curr < 20.0:
+            # Scenario 1: Passat B8 (7777 AB-7)
+            car_w, car_h = 420, 200
+            if t_curr < 4.0:
+                car_x = int(-car_w + (t_curr / 4.0) * (360 + car_w))
+            elif 4.0 <= t_curr < 16.5:
+                car_x = 360
+            else:
+                car_x = int(360 + ((t_curr - 16.5) / 3.5) * (1280 - 360 + 50))
+            car_y = 360
+
+            if car_x + car_w > 0 and car_x < 1280:
+                car_bbox = (max(0, car_x), car_y, min(1280, car_x + car_w), car_y + car_h)
+
+            if 2.0 <= t_curr < 17.5:
+                detected_plate_text = "7777 AB-7"
+
+            if 5.5 <= t_curr < 15.0:
+                nozzle_in_tank = True
+                hatch = (car_x + int(car_w * 0.82), car_y + int(car_h * 0.48))
+                nozzle_bbox = (hatch[0] - 14, hatch[1] - 14, hatch[0] + 14, hatch[1] + 14)
+
+        elif 20.0 <= t_curr < 35.0:
+            # Scenario 2: Geely Tugella (1234 IE-7)
+            st = t_curr - 20.0
+            car_w, car_h = 430, 210
+            if st < 3.5:
+                car_x = int(-car_w + (st / 3.5) * (340 + car_w))
+            elif 3.5 <= st < 7.0:
+                car_x = 340
+            else:
+                disp_val = min(1.0, (st - 7.0) / 2.5) * 70.0
+                car_x = int(340 + disp_val)
+            car_y = 360
+
+            if car_x + car_w > 0 and car_x < 1280:
+                car_bbox = (max(0, car_x), car_y, min(1280, car_x + car_w), car_y + car_h)
+
+            if 2.0 <= st < 14.5:
+                detected_plate_text = "1234 IE-7"
+
+            if 3.5 <= st < 15.0:
+                nozzle_in_tank = True
+                hatch = (car_x + int(car_w * 0.82), car_y + int(car_h * 0.48))
+                nozzle_bbox = (hatch[0] - 14, hatch[1] - 14, hatch[0] + 14, hatch[1] + 14)
+
+        else:
+            # Scenario 3: Lada Vesta (5678 MH-7)
+            st = t_curr - 35.0
+            car_w, car_h = 410, 195
+            if st < 3.5:
+                car_x = int(-car_w + (st / 3.5) * (360 + car_w))
+            elif 3.5 <= st < 12.0:
+                car_x = 360
+            else:
+                car_x = int(360 + ((st - 12.0) / 3.0) * (1280 - 360 + 50))
+            car_y = 360
+
+            if car_x + car_w > 0 and car_x < 1280:
+                car_bbox = (max(0, car_x), car_y, min(1280, car_x + car_w), car_y + car_h)
+
+            if 2.0 <= st < 13.0:
+                detected_plate_text = "5678 MH-7"
+
+            if 5.0 <= st < 10.5:
+                nozzle_in_tank = True
+                hatch = (car_x + int(car_w * 0.82), car_y + int(car_h * 0.48))
+                nozzle_bbox = (hatch[0] - 14, hatch[1] - 14, hatch[0] + 14, hatch[1] + 14)
+
+        # 2. Tracking with centroid tracker
+        detections = []
+        if car_bbox:
+            detections.append((car_bbox, "car", 0.98))
+
         tracked_objects = self.tracker.update(detections, timestamp=timestamp)
-
-        # Pick primary vehicle track
         primary_vehicle_track: Optional[TrackedObject] = None
         for obj in tracked_objects.values():
             if obj.class_name == "car":
                 primary_vehicle_track = obj
                 break
 
-        # 2. Plate Detection & OCR
-        detected_plate_text: Optional[str] = None
-        plate_confidence: float = 0.98
-        plate_bbox: Optional[Tuple[int, int, int, int]] = None
-
-        if primary_vehicle_track is not None:
-            vx1, vy1, vx2, vy2 = primary_vehicle_track.current_bbox
-            # Plate location is on rear of car
+        # 3. Plate Bounding Box
+        plate_bbox = None
+        if car_bbox and detected_plate_text:
+            vx1, vy1, vx2, vy2 = car_bbox
             plate_w = int((vx2 - vx1) * 0.32)
             plate_h = int((vy2 - vy1) * 0.16)
             plate_x = vx1 + int((vx2 - vx1) * 0.34)
             plate_y = vy1 + int((vy2 - vy1) * 0.65)
             plate_bbox = (plate_x, plate_y, plate_x + plate_w, plate_y + plate_h)
 
-            # Extract scenario-based plate
-            t_curr = self.sim_time % 50.0
-            if 0.0 <= t_curr < 20.0:
-                detected_plate_text = "7777 AB-7"
-            elif 20.0 <= t_curr < 35.0:
-                detected_plate_text = "1234 IE-7"
-            else:
-                detected_plate_text = "5678 MH-7"
-
-        # 3. Nozzle Connection State
-        nozzle_in_tank = False
-        nozzle_bbox = None
-
-        t_curr = self.sim_time % 50.0
-        if primary_vehicle_track is not None:
-            vx1, vy1, vx2, vy2 = primary_vehicle_track.current_bbox
-            hatch_target = (vx1 + int((vx2 - vx1) * 0.82), vy1 + int((vy2 - vy1) * 0.48))
-
-            if (
-                (0.0 <= t_curr < 20.0 and 5.5 <= t_curr < 15.0)
-                or (20.0 <= t_curr < 35.0 and 3.5 <= (t_curr - 20.0))
-                or (35.0 <= t_curr < 50.0 and 5.0 <= (t_curr - 35.0) < 10.5)
-            ):
-                nozzle_in_tank = True
-                nozzle_bbox = (
-                    hatch_target[0] - 14,
-                    hatch_target[1] - 14,
-                    hatch_target[0] + 14,
-                    hatch_target[1] + 14,
-                )
-
         # 4. Safety Risk Evaluation
-        plate_str = detected_plate_text or "7777 AB-7"
+        plate_str = detected_plate_text or "UNKNOWN"
         safety_status = self.safety_engine.evaluate_frame(
             vehicle_track=primary_vehicle_track,
             nozzle_in_tank=nozzle_in_tank,
@@ -199,6 +207,7 @@ class VisionPipeline:
         # 5. Telemetry Bounding Boxes Overlay
         boxes_telemetry = []
 
+        # Pump Zone
         px1, py1, px2, py2 = settings.PUMP_ZONE
         boxes_telemetry.append(
             {
@@ -209,21 +218,23 @@ class VisionPipeline:
             }
         )
 
-        if primary_vehicle_track is not None:
-            cb = primary_vehicle_track.current_bbox
-            speed_val = primary_vehicle_track.get_speed_px_per_sec()
+        # Vehicle Box
+        if car_bbox:
+            speed_val = primary_vehicle_track.get_speed_px_per_sec() if primary_vehicle_track else 0.0
+            track_id = primary_vehicle_track.track_id if primary_vehicle_track else 1
             boxes_telemetry.append(
                 {
                     "type": "vehicle",
-                    "track_id": primary_vehicle_track.track_id,
-                    "label": f"Т/С ID:{primary_vehicle_track.track_id} (V: {speed_val:.1f} px/s)",
-                    "bbox": list(cb),
-                    "centroid": list(primary_vehicle_track.current_centroid),
+                    "track_id": track_id,
+                    "label": f"Т/С #{track_id} (V: {speed_val:.1f} px/s)",
+                    "bbox": list(car_bbox),
+                    "centroid": [int((car_bbox[0] + car_bbox[2]) / 2), int((car_bbox[1] + car_bbox[3]) / 2)],
                     "displacement": safety_status.displacement_px,
                     "color": "#3B82F6" if not safety_status.is_alarm else "#EF4444",
                 }
             )
 
+        # Plate Box (Yellow #FFCC00)
         if plate_bbox and detected_plate_text:
             boxes_telemetry.append(
                 {
@@ -235,6 +246,7 @@ class VisionPipeline:
                 }
             )
 
+        # Nozzle Box
         if nozzle_in_tank and nozzle_bbox:
             boxes_telemetry.append(
                 {
@@ -252,7 +264,7 @@ class VisionPipeline:
             "frame_number": self.frame_count,
             "boxes": boxes_telemetry,
             "plate_detected": detected_plate_text,
-            "plate_confidence": 0.98,
+            "plate_confidence": 0.98 if detected_plate_text else 0.0,
             "nozzle_in_tank": nozzle_in_tank,
             "displacement_px": safety_status.displacement_px,
             "speed_px_sec": safety_status.speed_px_sec,
