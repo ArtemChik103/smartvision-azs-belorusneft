@@ -155,13 +155,11 @@ async def control_simulator(action: str = Query(..., pattern="^(restart|pause|re
     pipeline = getattr(request.app.state, "pipeline", None)
     fsm = getattr(request.app.state, "fsm", None)
 
-    if not pipeline or not pipeline.cap:
+    if not pipeline:
         raise HTTPException(status_code=400, detail="Vision pipeline is not running.")
 
-    fps = settings.VIDEO_FPS
-
     if action == "restart":
-        pipeline.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        pipeline.seek_time(0.0)
         pipeline.paused = False
         if fsm:
             fsm.reset_alarm()
@@ -170,17 +168,17 @@ async def control_simulator(action: str = Query(..., pattern="^(restart|pause|re
     elif action == "resume":
         pipeline.paused = False
     elif action == "scenario_1":
-        pipeline.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        pipeline.seek_time(0.0)
         pipeline.paused = False
         if fsm:
             fsm.reset_alarm()
     elif action == "scenario_2":
-        pipeline.cap.set(cv2.CAP_PROP_POS_FRAMES, int(20.0 * fps))
+        pipeline.seek_time(20.0)
         pipeline.paused = False
         if fsm:
             fsm.reset_alarm()
     elif action == "scenario_3":
-        pipeline.cap.set(cv2.CAP_PROP_POS_FRAMES, int(35.0 * fps))
+        pipeline.seek_time(35.0)
         pipeline.paused = False
         if fsm:
             fsm.reset_alarm()

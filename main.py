@@ -62,11 +62,9 @@ async def video_pipeline_worker(app: FastAPI):
             await asyncio.sleep(0.05)
             continue
 
-        ret, frame = pipeline.cap.read()
-        if not ret:
-            # Loop video seamlessly
-            pipeline.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-            fsm.reset_alarm()
+        ret, frame, sim_t = pipeline.read_frame()
+        if not ret or frame is None:
+            await asyncio.sleep(0.01)
             continue
 
         now = time.time()

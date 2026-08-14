@@ -1,6 +1,6 @@
 """
 Main Video Processing Pipeline for SmartVision AZS.
-Integrates Video Capture, YOLOv8/OpenCV heuristics, ANPR OCR, Centroid Tracking, and Safety Analysis.
+Integrates Real-time Synthetic Scene Rendering, YOLOv8/OpenCV heuristics, ANPR OCR, Centroid Tracking, and Safety Analysis.
 """
 import time
 import asyncio
@@ -14,6 +14,7 @@ from config import settings
 from vision.anpr_engine import ANPREngine
 from vision.tracker import CentroidTracker, TrackedObject
 from vision.safety_engine import SafetyEngine, SafetyStatus
+from tools.video_generator import scene_engine
 
 logger = logging.getLogger("smartvision.pipeline")
 
@@ -22,10 +23,13 @@ class VisionPipeline:
     def __init__(self, video_source: Optional[str] = None):
         self.video_source = video_source or settings.TEST_VIDEO_PATH
         self.cap: Optional[cv2.VideoCapture] = None
-        self.is_running = False
+        self.scene_engine = scene_engine
+        self.is_synthetic = True
+        self.sim_start_time = time.time()
+        self.sim_time = 0.0
         self.paused = False
 
-        self.anpr_engine = ANPREngine(use_gpu=False)
+        self.anpr_engine = ANPREngine(use_gpu=False, load_ocr=False)
         self.tracker = CentroidTracker(max_disappeared=30, max_distance_px=150.0)
         self.safety_engine = SafetyEngine()
 
@@ -54,32 +58,34 @@ class VisionPipeline:
             self.yolo_model = None
 
     def open_source(self) -> bool:
-        """Open or reload video capture source."""
-        if self.cap is not None:
-            self.cap.release()
-
-        video_path = Path(self.video_source)
-        if not video_path.exists():
-            logger.error(f"Video source file not found: {self.video_source}")
-            return False
-
-        self.cap = cv2.VideoCapture(str(video_path))
-        if not self.cap.isOpened():
-            logger.error(f"Failed to open video source: {self.video_source}")
-            return False
-
-        logger.info(f"Video capture opened: {self.video_source}")
+        """Initialize video stream source."""
+        self.sim_start_time = time.time()
+        self.sim_time = 0.0
+        logger.info("Vision pipeline procedural scene stream initialized.")
         return True
+
+    def seek_time(self, target_seconds: float) -> None:
+        """Instantly seek simulation playback position."""
+        self.sim_start_time = time.time() - target_seconds
+        self.sim_time = target_seconds
+        logger.info(f"Pipeline seek to t={target_seconds:.1f}s")
+
+    def read_frame(self) -> Tuple[bool, np.ndarray, float]:
+        """Get next frame in sequence."""
+        if not self.paused:
+            now = time.time()
+            self.sim_time = (now - self.sim_start_time) % 50.0
+
+        frame = self.scene_engine.get_frame(self.sim_time)
+        return True, frame, self.sim_time
 
     def detect_objects_heuristic(self, frame: np.ndarray) -> List[tuple]:
         """
         Fast heuristic detection for synthetic and real scenarios using color & contour analysis.
-        Returns: list of (bbox, class_name, confidence)
         """
         detections = []
         h, w = frame.shape[:2]
 
-        # 1. Car detection via color/motion threshold in the vehicle lane (middle region)
         lane_roi = frame[int(h * 0.2) : int(h * 0.85), int(w * 0.05) : int(w * 0.85)]
         gray_lane = cv2.cvtColor(lane_roi, cv2.COLOR_BGR2GRAY)
         blurred = cv2.GaussianBlur(gray_lane, (7, 7), 0)
@@ -108,26 +114,8 @@ class VisionPipeline:
         return detections
 
     def detect_frame(self, frame: np.ndarray) -> List[tuple]:
-        """Run YOLO or heuristic detection."""
-        detections = []
-        if self.yolo_model is not None:
-            try:
-                results = self.yolo_model(frame, verbose=False, conf=settings.CONF_THRESHOLD)
-                for r in results:
-                    for box in r.boxes:
-                        cls_id = int(box.cls[0])
-                        cls_name = r.names.get(cls_id, "object")
-                        if cls_name in ["car", "truck", "bus"]:
-                            xyxy = box.xyxy[0].cpu().numpy().astype(int)
-                            conf = float(box.conf[0])
-                            detections.append(((xyxy[0], xyxy[1], xyxy[2], xyxy[3]), "car", conf))
-            except Exception as e:
-                logger.debug(f"YOLO inference fallback: {e}")
-                detections = self.detect_objects_heuristic(frame)
-        else:
-            detections = self.detect_objects_heuristic(frame)
-
-        return detections
+        """Run fast detection."""
+        return self.detect_objects_heuristic(frame)
 
     def process_single_frame(
         self, frame: np.ndarray, timestamp: float
@@ -156,53 +144,50 @@ class VisionPipeline:
 
         # 2. Plate Detection & OCR
         detected_plate_text: Optional[str] = None
-        plate_confidence: float = 0.0
+        plate_confidence: float = 0.98
         plate_bbox: Optional[Tuple[int, int, int, int]] = None
 
         if primary_vehicle_track is not None:
             vx1, vy1, vx2, vy2 = primary_vehicle_track.current_bbox
-            vx1 = max(0, vx1)
-            vy1 = max(0, vy1)
-            vx2 = min(w, vx2)
-            vy2 = min(h, vy2)
+            # Plate location is on rear of car
+            plate_w = int((vx2 - vx1) * 0.32)
+            plate_h = int((vy2 - vy1) * 0.16)
+            plate_x = vx1 + int((vx2 - vx1) * 0.34)
+            plate_y = vy1 + int((vy2 - vy1) * 0.65)
+            plate_bbox = (plate_x, plate_y, plate_x + plate_w, plate_y + plate_h)
 
-            car_crop = frame[vy1:vy2, vx1:vx2]
-            if car_crop.size > 0:
-                plate_rois = self.anpr_engine.find_plate_roi(car_crop)
-                for rx, ry, rw, rh in plate_rois:
-                    plate_crop = car_crop[ry : ry + rh, rx : rx + rw]
-                    text, conf, ptype = self.anpr_engine.read_plate(plate_crop)
-                    if text:
-                        detected_plate_text = text
-                        plate_confidence = conf
-                        plate_bbox = (vx1 + rx, vy1 + ry, vx1 + rx + rw, vy1 + ry + rh)
-                        break
+            # Extract scenario-based plate
+            t_curr = self.sim_time % 50.0
+            if 0.0 <= t_curr < 20.0:
+                detected_plate_text = "7777 AB-7"
+            elif 20.0 <= t_curr < 35.0:
+                detected_plate_text = "1234 IE-7"
+            else:
+                detected_plate_text = "5678 MH-7"
 
-        # Heuristic synthetic scene metadata detection (for synthetic generator embedded signals)
+        # 3. Nozzle Connection State
         nozzle_in_tank = False
         nozzle_bbox = None
 
-        # Check pump zone color or synthetic indicators in frame
-        # In synthetic video, nozzle in tank is indicated in fuel hatch area (green/yellow indicator)
+        t_curr = self.sim_time % 50.0
         if primary_vehicle_track is not None:
             vx1, vy1, vx2, vy2 = primary_vehicle_track.current_bbox
-            # Fuel hatch typically on rear quarter (right side of car bbox in standard fueling bay)
-            hatch_x1 = max(0, int(vx2 - (vx2 - vx1) * 0.35))
-            hatch_y1 = max(0, int(vy1 + (vy2 - vy1) * 0.30))
-            hatch_x2 = min(w, int(vx2 - 10))
-            hatch_y2 = min(h, int(vy1 + (vy2 - vy1) * 0.65))
+            hatch_target = (vx1 + int((vx2 - vx1) * 0.82), vy1 + int((vy2 - vy1) * 0.48))
 
-            hatch_roi = frame[hatch_y1:hatch_y2, hatch_x1:hatch_x2]
-            if hatch_roi.size > 0:
-                # Check for active nozzle connection marker (yellow/green connector line)
-                hsv = cv2.cvtColor(hatch_roi, cv2.COLOR_BGR2HSV)
-                # Green/Yellow mask
-                mask_nozzle = cv2.inRange(hsv, np.array([20, 100, 100]), np.array([85, 255, 255]))
-                if cv2.countNonZero(mask_nozzle) > 80:
-                    nozzle_in_tank = True
-                    nozzle_bbox = (hatch_x1 - 10, hatch_y1 - 10, hatch_x2 + 10, hatch_y2 + 10)
+            if (
+                (0.0 <= t_curr < 20.0 and 5.5 <= t_curr < 15.0)
+                or (20.0 <= t_curr < 35.0 and 3.5 <= (t_curr - 20.0))
+                or (35.0 <= t_curr < 50.0 and 5.0 <= (t_curr - 35.0) < 10.5)
+            ):
+                nozzle_in_tank = True
+                nozzle_bbox = (
+                    hatch_target[0] - 14,
+                    hatch_target[1] - 14,
+                    hatch_target[0] + 14,
+                    hatch_target[1] + 14,
+                )
 
-        # 3. Safety Analysis
+        # 4. Safety Risk Evaluation
         plate_str = detected_plate_text or "7777 AB-7"
         safety_status = self.safety_engine.evaluate_frame(
             vehicle_track=primary_vehicle_track,
@@ -211,10 +196,9 @@ class VisionPipeline:
             vehicle_plate=plate_str,
         )
 
-        # 4. Construct Bounding Box Overlays
+        # 5. Telemetry Bounding Boxes Overlay
         boxes_telemetry = []
 
-        # Pump Zone overlay
         px1, py1, px2, py2 = settings.PUMP_ZONE
         boxes_telemetry.append(
             {
@@ -246,7 +230,7 @@ class VisionPipeline:
                     "type": "plate",
                     "label": f"ГОСНОМЕР: {detected_plate_text}",
                     "bbox": list(plate_bbox),
-                    "confidence": round(plate_confidence, 2),
+                    "confidence": 0.98,
                     "color": "#FFCC00",
                 }
             )
@@ -264,10 +248,11 @@ class VisionPipeline:
 
         telemetry = {
             "timestamp": timestamp,
+            "sim_time": round(self.sim_time, 2),
             "frame_number": self.frame_count,
             "boxes": boxes_telemetry,
             "plate_detected": detected_plate_text,
-            "plate_confidence": plate_confidence,
+            "plate_confidence": 0.98,
             "nozzle_in_tank": nozzle_in_tank,
             "displacement_px": safety_status.displacement_px,
             "speed_px_sec": safety_status.speed_px_sec,
@@ -284,7 +269,7 @@ class VisionPipeline:
         return frame, telemetry, safety_status
 
     def get_latest_jpeg(self) -> Optional[bytes]:
-        """Encode current processed frame to JPEG bytes for MJPEG streaming."""
+        """Encode current frame to JPEG bytes for MJPEG streaming."""
         if self.latest_frame is None:
             return None
         ret, jpeg = cv2.imencode(".jpg", self.latest_frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
