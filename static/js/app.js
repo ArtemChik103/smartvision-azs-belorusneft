@@ -246,23 +246,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 6. Simulator Controls & Action Buttons
-    const videoEl = document.getElementById('stationVideo');
     const scenarioBtns = document.querySelectorAll('.scenario-btn');
     scenarioBtns.forEach((btn) => {
         btn.addEventListener('click', async () => {
             const action = btn.getAttribute('data-action');
-            if (videoEl) {
-                if (action === 'scenario_1' || action === 'restart') {
-                    videoEl.currentTime = 0;
-                    videoEl.play();
-                } else if (action === 'scenario_2') {
-                    videoEl.currentTime = 20.0;
-                    videoEl.play();
-                } else if (action === 'scenario_3') {
-                    videoEl.currentTime = 35.0;
-                    videoEl.play();
-                }
-            }
             try {
                 await fetch(`/api/simulator/control?action=${action}`, { method: 'POST' });
             } catch (e) {
