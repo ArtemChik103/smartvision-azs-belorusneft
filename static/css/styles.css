@@ -353,43 +353,57 @@ input[type=range]::-webkit-slider-thumb:hover {
         margin: 0 auto !important;
     }
 
-    /* Typography & Corporate Palette for Print */
+    /* Typography & High-Contrast Corporate Palette for Print */
     #teoModal h3 {
         color: #00843D !important;
-        font-size: 15pt !important;
+        font-size: 16pt !important;
         font-weight: 900 !important;
     }
-    #teoModal p {
-        color: #475569 !important;
-    }
-    #teoModal .bg-zinc-900\/90, 
-    #teoModal .bg-zinc-900\/60,
-    #teoModal .bg-zinc-900 {
-        background: #F8FAFC !important;
-        border: 1px solid #CBD5E1 !important;
+    #teoModal h4 {
         color: #0F172A !important;
+        font-weight: 800 !important;
+        font-size: 10pt !important;
     }
-    #teoModal span.text-white {
+    #teoModal p {
+        color: #334155 !important;
+    }
+    #teoModal span,
+    #teoModal div {
+        color: #1E293B !important;
+    }
+    #teoModal .text-zinc-400,
+    #teoModal .text-zinc-300,
+    #teoModal .text-zinc-500 {
+        color: #334155 !important;
+        font-weight: 500 !important;
+    }
+    #teoModal .text-white,
+    #teoModal span.text-white,
+    #teoModal strong {
         color: #0F172A !important;
         font-weight: 800 !important;
     }
-    #teoModal span.text-zinc-400,
-    #teoModal span.text-zinc-300,
-    #teoModal span.text-zinc-200 {
-        color: #334155 !important;
-    }
     #teoModal .text-emerald-400,
-    #teoModal .text-\[\#00E676\] {
+    #teoModal .text-\[\#00E676\],
+    #teoModal span.text-emerald-400 {
         color: #00843D !important;
         font-weight: 900 !important;
     }
-    #teoModal .text-amber-300 {
+    #teoModal .text-amber-300,
+    #teoModal span.text-amber-300 {
         color: #B45309 !important;
         font-weight: 900 !important;
+    }
+    #teoModal .bg-zinc-900\/90, 
+    #teoModal .bg-zinc-900\/60,
+    #teoModal .bg-zinc-900,
+    #teoModal .bg-zinc-900\/80 {
+        background: #F8FAFC !important;
+        border: 1.5px solid #CBD5E1 !important;
     }
     #teoModal .border-zinc-800,
     #teoModal .border-zinc-800\/60,
     #teoModal .border-zinc-700 {
-        border-color: #E2E8F0 !important;
+        border-color: #CBD5E1 !important;
     }
 }
