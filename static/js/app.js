@@ -391,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update Cockpit Badges & Panels
         updateFsmBadge(state);
         updateDriveAndPayCard(session, state, telemetry.plate_detected);
-        updateFuelMeter(session, state);
+        updateFuelMeter(session, state, telemetry);
         updateSafetyPanel(telemetry, state);
     }
 
@@ -418,64 +418,116 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateDriveAndPayCard(session, state, detectedPlate) {
         const elName = document.getElementById('cardDriverName');
         const elPlate = document.getElementById('cardPlate');
+        const elInitials = document.getElementById('cardInitials');
         const elModel = document.getElementById('cardModel');
         const elBalance = document.getElementById('cardBalance');
         const elFuel = document.getElementById('cardFuelType');
         const elDnpStatus = document.getElementById('cardDnpStatus');
 
-        if (session) {
-            if (elName) elName.textContent = session.driver_name || 'Клиент';
-            if (elPlate) elPlate.textContent = session.vehicle_plate || '—';
-            if (elModel) elModel.textContent = session.car_model || '—';
-            if (elBalance) elBalance.textContent = `${(session.driver_balance || 0).toFixed(2)} BYN`;
-            if (elFuel) elFuel.textContent = `${session.fuel_type || 'АИ-95'} (${(session.price_per_liter || 2.46).toFixed(2)} BYN/л)`;
+        const driverPresets = {
+            '7777 AB-7': {
+                name: 'Иванов И. И.',
+                initials: 'ИИ',
+                model: 'Volkswagen Passat B8 (2.0 TSI)',
+                balance: 150.00,
+                dnp: true,
+                fuel: 'АИ-95',
+                price: 2.46,
+            },
+            '1234 IE-7': {
+                name: 'Петров П. П.',
+                initials: 'ПП',
+                model: 'Geely Tugella 2.0T',
+                balance: 95.50,
+                dnp: true,
+                fuel: 'АИ-95',
+                price: 2.46,
+            },
+            '5678 MH-7': {
+                name: 'Гостевой клиент',
+                initials: 'ГК',
+                model: 'Lada Vesta (1.6 MT)',
+                balance: 0.00,
+                dnp: false,
+                fuel: 'АИ-92',
+                price: 2.36,
+            },
+        };
 
-            if (elDnpStatus) {
-                if (session.is_drive_and_pay) {
-                    elDnpStatus.className = 'inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/40';
-                    elDnpStatus.textContent = 'Drive&Pay: Активен (Zero-Click)';
-                } else {
-                    elDnpStatus.className = 'inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40';
-                    elDnpStatus.textContent = 'Гостевой режим (Оплата на кассе)';
-                }
-            }
-        } else if (detectedPlate) {
-            if (elPlate) elPlate.textContent = detectedPlate;
-            if (detectedPlate === '7777 AB-7') {
-                if (elName) elName.textContent = 'Иванов И. И.';
-                if (elModel) elModel.textContent = 'VW Passat B8';
-                if (elBalance) elBalance.textContent = '150.00 BYN';
-                if (elDnpStatus) {
-                    elDnpStatus.className = 'inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/40';
-                    elDnpStatus.textContent = 'Drive&Pay: Активен (Zero-Click)';
-                }
-            } else if (detectedPlate === '1234 IE-7') {
-                if (elName) elName.textContent = 'Петров П. П.';
-                if (elModel) elModel.textContent = 'Geely Tugella';
-                if (elBalance) elBalance.textContent = '80.00 BYN';
-                if (elDnpStatus) {
-                    elDnpStatus.className = 'inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/40';
-                    elDnpStatus.textContent = 'Drive&Pay: Активен';
-                }
+        const activePlate = session?.plate || detectedPlate || '7777 AB-7';
+        const preset = driverPresets[activePlate] || {
+            name: session?.driver_name || 'Гостевой клиент',
+            initials: 'ГК',
+            model: session?.model || 'Легковой автомобиль',
+            balance: session?.balance !== undefined ? session.balance : 0.00,
+            dnp: !!session?.is_drive_and_pay,
+            fuel: session?.fuel_type || currentFuelType || 'АИ-95',
+            price: session?.price || currentFuelPrice || 2.46,
+        };
+
+        const driverName = session?.driver_name && session.driver_name !== 'Гостевой клиент' ? session.driver_name : preset.name;
+        const carModel = session?.model && session.model !== '—' && session.model !== 'Легковой автомобиль' ? session.model : preset.model;
+        const driverBalance = session?.balance !== undefined && session.balance > 0 ? session.balance : preset.balance;
+        const isDnp = session ? session.is_drive_and_pay : preset.dnp;
+        const fuelName = session?.fuel_type || preset.fuel;
+        const fuelPrice = session?.price || preset.price;
+
+        if (elPlate) elPlate.textContent = activePlate;
+        if (elName) elName.textContent = driverName;
+        if (elInitials) elInitials.textContent = preset.initials;
+        if (elModel) elModel.textContent = carModel;
+        if (elBalance) elBalance.textContent = `${driverBalance.toFixed(2)} BYN`;
+        if (elFuel) elFuel.textContent = `${fuelName} (${fuelPrice.toFixed(2)} BYN/л)`;
+
+        if (elDnpStatus) {
+            if (isDnp) {
+                elDnpStatus.className = 'inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/40';
+                elDnpStatus.textContent = 'Drive&Pay: Активен (Zero-Click)';
             } else {
-                if (elName) elName.textContent = 'Гостевой клиент';
-                if (elModel) elModel.textContent = 'Lada Vesta';
-                if (elBalance) elBalance.textContent = '0.00 BYN';
-                if (elDnpStatus) {
-                    elDnpStatus.className = 'inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40';
-                    elDnpStatus.textContent = 'Гостевой режим (Оплата на кассе)';
-                }
+                elDnpStatus.className = 'inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40';
+                elDnpStatus.textContent = 'Гостевой режим (Оплата на кассе)';
             }
         }
     }
 
-    function updateFuelMeter(session, state) {
+    function updateFuelMeter(session, state, telemetry) {
+        const elTitle = document.getElementById('fuelMeterHeaderTitle');
+        const elCardBox = document.getElementById('fuelMeterCardBox');
         const elLiters = document.getElementById('dispensedLiters');
         const elCost = document.getElementById('dispensedCost');
         const elTarget = document.getElementById('targetLiters');
         const elBar = document.getElementById('fuelProgressBar');
 
-        if (session) {
+        const isAlarm = state === 'ALARM_LOCKDOWN' || (telemetry && telemetry.is_alarm);
+
+        if (isAlarm) {
+            if (elTitle) elTitle.innerHTML = '<span class="text-red-400 font-bold uppercase tracking-wider animate-pulse">⛔ НАЛИВ ЗАБЛОКИРОВАН (E-STOP)</span>';
+            if (elCardBox) elCardBox.className = 'bg-red-950/70 p-4 rounded-xl border-2 border-red-500 mb-3 text-center shadow-lg shadow-red-500/20';
+            if (elCost) elCost.className = 'text-lg font-bold text-red-400 telemetry-val mt-1';
+            if (elBar) elBar.className = 'bg-red-600 h-full transition-all duration-200 shadow-md shadow-red-500/50';
+            if (session) {
+                const liters = session.dispensed_liters || 0.0;
+                const cost = session.total_cost || 0.0;
+                if (elLiters) elLiters.textContent = liters.toFixed(2);
+                if (elCost) elCost.textContent = `${cost.toFixed(2)} BYN [E-STOP]`;
+            }
+            return;
+        }
+
+        // Normal States
+        if (elCardBox) elCardBox.className = 'bg-[#0F172A] p-4 rounded-xl border border-zinc-800 mb-3 text-center transition-colors duration-300';
+        if (elCost) elCost.className = 'text-lg font-bold text-emerald-400 telemetry-val mt-1';
+        if (elBar) elBar.className = 'bg-gradient-to-r from-[#00843D] to-[#00E676] h-full transition-all duration-200';
+
+        if (state === 'FUELING') {
+            if (elTitle) elTitle.innerHTML = '<span class="text-emerald-400 font-bold uppercase tracking-wider animate-pulse">⚡ ИДЕТ НАЛИВ ТОПЛИВА</span>';
+        } else if (state === 'SESSION_COMPLETE') {
+            if (elTitle) elTitle.innerHTML = '<span class="text-emerald-400 font-bold uppercase tracking-wider">✓ НАЛИВ ЗАВЕРШЕН</span>';
+        } else {
+            if (elTitle) elTitle.innerHTML = '<span class="text-zinc-400 font-bold uppercase tracking-wider">Налив топлива в реальном времени</span>';
+        }
+
+        if (session && state !== 'IDLE') {
             const liters = session.dispensed_liters || 0.0;
             const cost = session.total_cost || 0.0;
             const target = session.target_liters || 30.0;

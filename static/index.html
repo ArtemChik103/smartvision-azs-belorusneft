@@ -235,7 +235,7 @@
 
                         <!-- Driver Info -->
                         <div class="flex items-center gap-3.5 mb-4 pb-4 border-b border-zinc-800">
-                            <div class="w-12 h-12 rounded-xl bg-[#00843D]/20 border border-[#00843D]/50 flex items-center justify-center text-[#00E676] font-bold text-lg">
+                            <div id="cardInitials" class="w-12 h-12 rounded-xl bg-[#00843D]/20 border border-[#00843D]/50 flex items-center justify-center text-[#00E676] font-bold text-lg">
                                 ИИ
                             </div>
                             <div>
@@ -248,7 +248,7 @@
                         <div class="grid grid-cols-2 gap-3 text-xs">
                             <div class="bg-zinc-900/90 p-3 rounded-xl border border-zinc-800">
                                 <span class="text-zinc-400 block mb-1">Автомобиль</span>
-                                <span id="cardModel" class="font-semibold text-zinc-200 block truncate">VW Passat B8</span>
+                                <span id="cardModel" class="font-semibold text-zinc-200 block truncate">Volkswagen Passat B8</span>
                             </div>
                             <div class="bg-zinc-900/90 p-3 rounded-xl border border-zinc-800">
                                 <span class="text-zinc-400 block mb-1">Баланс кошелька</span>
@@ -273,12 +273,12 @@
                     <!-- Live Fuel Dispenser Meter -->
                     <div class="bg-[#18181B] rounded-2xl border border-zinc-800 p-5 shadow-xl">
                         <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400">Налив топлива в реальном времени</h3>
+                            <h3 id="fuelMeterHeaderTitle" class="text-xs font-bold uppercase tracking-wider text-zinc-400">Налив топлива в реальном времени</h3>
                             <span class="text-xs text-zinc-400">Цель: <b id="targetLiters" class="text-white telemetry-val">30.0 л</b></span>
                         </div>
 
                         <!-- Big Digital Meter -->
-                        <div class="bg-[#0F172A] p-4 rounded-xl border border-zinc-800 mb-3 text-center">
+                        <div id="fuelMeterCardBox" class="bg-[#0F172A] p-4 rounded-xl border border-zinc-800 mb-3 text-center transition-colors duration-300">
                             <div class="text-4xl font-black text-white telemetry-val tracking-tight">
                                 <span id="dispensedLiters">0.00</span> <span class="text-base text-zinc-400 font-normal">Литров</span>
                             </div>
