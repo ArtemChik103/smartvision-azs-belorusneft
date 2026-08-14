@@ -367,8 +367,7 @@ input[type=range]::-webkit-slider-thumb:hover {
     #teoModal p {
         color: #334155 !important;
     }
-    #teoModal span,
-    #teoModal div {
+    #teoModal span {
         color: #1E293B !important;
     }
     #teoModal .text-zinc-400,
@@ -377,11 +376,15 @@ input[type=range]::-webkit-slider-thumb:hover {
         color: #334155 !important;
         font-weight: 500 !important;
     }
-    #teoModal .text-white,
-    #teoModal span.text-white,
     #teoModal strong {
         color: #0F172A !important;
         font-weight: 800 !important;
+    }
+    /* Corporate Logo Badge (White on Green) */
+    #teoModal .bg-\[\#00843D\],
+    #teoModal .bg-\[\#00843D\] * {
+        background-color: #00843D !important;
+        color: #FFFFFF !important;
     }
     #teoModal .text-emerald-400,
     #teoModal .text-\[\#00E676\],
