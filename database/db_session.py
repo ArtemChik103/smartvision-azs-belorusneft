@@ -106,49 +106,5 @@ async def init_db() -> None:
             )
             session.add(veh3)
 
-            # Sample historical fueling sessions
-            now = datetime.utcnow()
-            hist_sess1 = FuelingSession(
-                vehicle_plate="7777 AB-7",
-                fuel_type="АИ-95",
-                target_liters=30.0,
-                dispensed_liters=30.0,
-                price_per_liter=2.46,
-                total_cost=73.80,
-                status="SESSION_COMPLETE",
-                payment_status="PAID_AUTO",
-                is_zero_click=True,
-                start_time=now - timedelta(hours=2, minutes=15),
-                end_time=now - timedelta(hours=2, minutes=12),
-                created_at=now - timedelta(hours=2, minutes=15),
-            )
-            session.add(hist_sess1)
-
-            hist_sess2 = FuelingSession(
-                vehicle_plate="1234 IE-7",
-                fuel_type="АИ-95",
-                target_liters=25.0,
-                dispensed_liters=25.0,
-                price_per_liter=2.46,
-                total_cost=61.50,
-                status="SESSION_COMPLETE",
-                payment_status="PAID_AUTO",
-                is_zero_click=True,
-                start_time=now - timedelta(hours=5, minutes=40),
-                end_time=now - timedelta(hours=5, minutes=37),
-                created_at=now - timedelta(hours=5, minutes=40),
-            )
-            session.add(hist_sess2)
-
-            # Sample historical incident
-            hist_inc = IncidentLog(
-                incident_type="CRITICAL_HOSE_TEAR_RISK",
-                severity="CRITICAL",
-                description="Предотвращен обрыв шланга ТРК №2. Зафиксировано смещение авто 18.4 px при активном пистолете. Насос мгновенно заблокирован.",
-                displacement_px=18.4,
-                created_at=now - timedelta(days=1, hours=3),
-            )
-            session.add(hist_inc)
-
             await session.commit()
-            logger.info("Database initialized with seed users, vehicles and logs.")
+            logger.info("Database initialized with seed users and vehicles (Audit logs start clean for real-time capture).")

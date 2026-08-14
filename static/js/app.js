@@ -867,24 +867,26 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (filteredSessions.length === 0) {
-                sessionsTbody.innerHTML = `<tr><td colspan="8" class="px-4 py-3 text-center text-zinc-500">Нет записей по заданным фильтрам</td></tr>`;
+                sessionsTbody.innerHTML = `<tr><td colspan="8" class="px-4 py-8 text-center text-zinc-500 font-medium">Ожидание завершения транзакций (мониторинг ТРК №2 активен в реальном времени)...</td></tr>`;
             } else {
                 filteredSessions.forEach((s, idx) => {
                     const row = document.createElement('tr');
-                    row.className = 'hover:bg-zinc-800/50 transition-colors';
-                    const timeStr = s.created_at ? new Date(s.created_at).toLocaleTimeString('ru-RU') : '—';
+                    row.className = s.created_at === 'Сейчас (Live)' ? 'bg-emerald-950/20 border-l-2 border-emerald-500 hover:bg-emerald-950/30 transition-colors' : 'hover:bg-zinc-800/50 transition-colors';
+                    const timeStr = s.created_at === 'Сейчас (Live)' 
+                        ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse">● LIVE</span>`
+                        : (s.created_at || '—');
                     const dnpBadge = s.is_drive_and_pay
                         ? `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-green-500/20 text-green-400 border border-green-500/30">Zero-Click</span>`
                         : `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">Гость</span>`;
 
                     row.innerHTML = `
-                        <td class="px-4 py-3 font-mono text-[11px] text-zinc-400">${s.session_uuid.slice(0, 8)}...</td>
+                        <td class="px-4 py-3 font-mono text-[11px] text-zinc-400">${(s.session_uuid || '').slice(0, 8)}...</td>
                         <td class="px-4 py-3 font-bold font-mono text-white">${s.plate_number}</td>
                         <td class="px-4 py-3 text-zinc-300">${s.fuel_type}</td>
                         <td class="px-4 py-3 font-mono text-zinc-200">${s.dispensed_liters.toFixed(2)} л</td>
                         <td class="px-4 py-3 font-bold text-emerald-400 font-mono">${s.total_cost.toFixed(2)} BYN</td>
                         <td class="px-4 py-3">${dnpBadge}</td>
-                        <td class="px-4 py-3 font-mono text-zinc-400">${timeStr}</td>
+                        <td class="px-4 py-3 font-mono text-zinc-300">${timeStr}</td>
                         <td class="px-4 py-3">
                             <button class="row-receipt-btn text-xs text-amber-400 font-bold hover:underline" data-idx="${idx}">Чек 🧾</button>
                         </td>
@@ -913,17 +915,17 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (filteredIncidents.length === 0) {
-                incidentsTbody.innerHTML = `<tr><td colspan="5" class="px-4 py-3 text-center text-zinc-500">Инцидентов не зафиксировано</td></tr>`;
+                incidentsTbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-zinc-500 font-medium">Инцидентов не зафиксировано. Комплекс безопасности ТРК №2 активен в штатном режиме.</td></tr>`;
             } else {
                 filteredIncidents.forEach((inc, idx) => {
                     const row = document.createElement('tr');
                     row.className = 'hover:bg-red-950/30 transition-colors';
-                    const timeStr = inc.created_at ? new Date(inc.created_at).toLocaleTimeString('ru-RU') : '—';
+                    const timeStr = inc.created_at || '—';
 
                     row.innerHTML = `
                         <td class="px-4 py-3 font-bold text-red-400">${inc.incident_type}</td>
                         <td class="px-4 py-3 text-zinc-200 text-xs">${inc.description}</td>
-                        <td class="px-4 py-3 font-bold font-mono text-red-300">${inc.displacement_px.toFixed(1)} px</td>
+                        <td class="px-4 py-3 font-bold font-mono text-red-300">${(inc.displacement_px || 0).toFixed(1)} px</td>
                         <td class="px-4 py-3 font-mono text-zinc-400">${timeStr}</td>
                         <td class="px-4 py-3">
                             <button class="row-snapshot-btn px-2 py-1 rounded bg-red-900/60 hover:bg-red-800 text-white font-bold text-[11px] border border-red-700" data-idx="${idx}">

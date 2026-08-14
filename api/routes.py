@@ -41,6 +41,7 @@ async def get_system_status(request: Request) -> Dict[str, Any]:
 @router.get("/sessions")
 @router.get("/sessions/recent")
 async def get_sessions(
+    request: Request,
     limit: int = Query(25, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ) -> List[Dict[str, Any]]:
@@ -49,7 +50,7 @@ async def get_sessions(
         select(FuelingSession).order_by(desc(FuelingSession.created_at)).limit(limit)
     )
     sessions = result.scalars().all()
-    return [
+    out = [
         {
             "id": s.id,
             "session_uuid": s.session_uuid,
@@ -64,11 +65,45 @@ async def get_sessions(
             "payment_status": s.payment_status,
             "is_zero_click": s.is_zero_click,
             "is_drive_and_pay": s.is_zero_click,
-            "receipt_number": s.receipt_number,
-            "created_at": s.created_at.strftime("%Y-%m-%d %H:%M:%S") if s.created_at else "",
+            "receipt_number": f"REC-BN-{(s.vehicle_plate or '7777AB7').replace(' ', '').replace('-', '')}",
+            "created_at": s.created_at.strftime("%H:%M:%S") if s.created_at else "",
         }
         for s in sessions
+        if s.status == "COMPLETED" or s.dispensed_liters > 0
     ]
+
+    # Prepend live in-progress fueling session if active
+    fsm = getattr(request.app.state, "fsm", None)
+    if fsm and fsm.active_session and fsm.state in [FuelingState.FUELING, FuelingState.NOZZLE_RETURNED, FuelingState.SESSION_COMPLETE]:
+        active_s = fsm.active_session
+        if active_s.dispensed_liters > 0:
+            already_in = any(item.get("session_uuid") == active_s.session_uuid and item.get("status") == "COMPLETED" for item in out)
+            if not already_in:
+                # If already in out as pending, update it, else prepend
+                for item in out:
+                    if item.get("session_uuid") == active_s.session_uuid:
+                        item["dispensed_liters"] = active_s.dispensed_liters
+                        item["total_cost"] = active_s.total_cost
+                        break
+                else:
+                    out.insert(0, {
+                        "id": 999999,
+                        "session_uuid": active_s.session_uuid,
+                        "vehicle_plate": active_s.vehicle_plate,
+                        "plate_number": active_s.vehicle_plate,
+                        "fuel_type": active_s.fuel_type,
+                        "target_liters": active_s.target_liters,
+                        "dispensed_liters": active_s.dispensed_liters,
+                        "price_per_liter": active_s.price_per_liter,
+                        "total_cost": active_s.total_cost,
+                        "status": "ИДЕТ НАЛИВ..." if fsm.state == FuelingState.FUELING else "ЗАВЕРШЕНА",
+                        "payment_status": "В ПРОЦЕССЕ" if fsm.state == FuelingState.FUELING else "SUCCESS",
+                        "is_zero_click": active_s.is_drive_and_pay,
+                        "is_drive_and_pay": active_s.is_drive_and_pay,
+                        "receipt_number": active_s.receipt_id or f"REC-BN-{active_s.vehicle_plate.replace(' ', '')}",
+                        "created_at": "Сейчас (Live)",
+                    })
+    return out
 
 
 @router.get("/incidents")

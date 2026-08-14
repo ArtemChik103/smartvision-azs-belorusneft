@@ -161,11 +161,12 @@ async def test_api_endpoints():
         # Sessions
         res_sess = await ac.get("/api/sessions")
         assert res_sess.status_code == 200
-        assert len(res_sess.json()) >= 1
+        assert isinstance(res_sess.json(), list)
 
         # Incidents
         res_inc = await ac.get("/api/incidents")
         assert res_inc.status_code == 200
+        assert isinstance(res_inc.json(), list)
 
         # ROI calculate
         res_roi = await ac.post(
