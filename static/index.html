@@ -63,7 +63,7 @@
                 </button>
             </nav>
 
-            <!-- Status Badges & Quick Action -->
+            <!-- Quick Actions -->
             <div class="flex items-center gap-3">
                 <button id="exportReportBtn" class="tactile-btn hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-medium text-[#FFCC00] hover:bg-zinc-800">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
@@ -74,11 +74,6 @@
                     <span id="muteIcon">🔊</span>
                     <span id="muteText">Звук: Вкл</span>
                 </button>
-
-                <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs">
-                    <span id="wsStatusBadge" class="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
-                    <span id="wsStatusText" class="font-mono text-zinc-300 font-medium">ONLINE</span>
-                </div>
             </div>
         </div>
     </header>
@@ -91,19 +86,16 @@
         <!-- ========================================================================= -->
         <section id="tab-operator" class="tab-panel">
             <!-- Emergency Alert Banner (Shown during alarm) -->
-            <div id="emergencyAlarmBanner" class="hidden mb-6 p-4 rounded-xl bg-red-950/80 border-2 border-red-500 alarm-pulse-border flex items-center justify-between">
+            <div id="emergencyAlarmBanner" class="hidden mb-6 p-4 rounded-xl bg-red-950 border border-red-500 flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center text-white font-black text-xl animate-bounce">
+                    <div class="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center text-white font-black text-xl">
                         ⚠
                     </div>
                     <div>
                         <h2 class="text-base font-black text-red-100 uppercase tracking-wide">КРИТИЧЕСКИЙ РИСК ОБРЫВА ШЛАНГА (ТРК №2)!</h2>
-                        <p id="alarmDetailsText" class="text-xs text-red-200 mt-0.5">Смещение автомобиля зафиксировано при подключенном пистолете. Насос мгновенно заблокирован.</p>
+                        <p id="alarmDetailsText" class="text-xs text-red-200 mt-0.5">Смещение автомобиля зафиксировано при подключенном пистолете. Подача топлива мгновенно заблокирована (E-STOP).</p>
                     </div>
                 </div>
-                <button id="resetAlarmBtn" class="tactile-btn px-4 py-2 rounded-lg bg-red-700 hover:bg-red-600 text-white font-bold text-xs uppercase tracking-wider border border-red-400 shadow-lg">
-                    Сбросить тревогу и разблокировать
-                </button>
             </div>
 
             <!-- Top Cockpit Grid -->
@@ -301,27 +293,25 @@
                     <!-- Safety & Hose Protection Panel + E-STOP -->
                     <div class="bg-[#18181B] rounded-2xl border border-zinc-800 p-5 shadow-xl">
                         <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400">Мониторинг безопасности</h3>
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400">Автоматическая безопасность</h3>
                             <span id="pumpLockStatus" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-600/30 text-emerald-300 border border-emerald-500/50">
                                 НАСОС: РАЗРЕШЕН
                             </span>
                         </div>
 
-                        <div class="space-y-2 text-xs mb-4">
+                        <div class="space-y-2 text-xs">
                             <div class="flex justify-between py-1.5 px-3 bg-zinc-900 rounded-lg border border-zinc-800">
-                                <span class="text-zinc-400">Смещение автомобиля (300мс):</span>
+                                <span class="text-zinc-400">Смещение авто (300мс):</span>
                                 <span id="safetyDisplacementVal" class="font-bold telemetry-val text-emerald-400">0.0 px / 300мс</span>
                             </div>
-                            <div class="p-2.5 bg-zinc-900/60 rounded-lg border border-zinc-800/80 text-zinc-300 text-[11px] leading-relaxed">
-                                <span id="safetyStatusMsg">Мониторинг риска обрыва шланга активен. Порог срабатывания: &gt; 15 px.</span>
+                            <div class="flex justify-between py-1.5 px-3 bg-zinc-900 rounded-lg border border-zinc-800">
+                                <span class="text-zinc-400">Порог блокировки:</span>
+                                <span class="font-bold text-zinc-300">15.0 px (&lt; 300мс)</span>
+                            </div>
+                            <div class="p-2.5 bg-zinc-900/60 rounded-lg border border-zinc-800/80 text-zinc-400 text-[11px] leading-relaxed">
+                                <span id="safetyStatusMsg">Компьютерное зрение в реальном времени отслеживает смещение авто при активном пистолете. Блокировка выполняется аппаратно.</span>
                             </div>
                         </div>
-
-                        <!-- Big Tactile E-STOP Button -->
-                        <button id="estopButton" class="estop-button tactile-btn w-full py-3.5 rounded-xl font-black text-white text-sm uppercase tracking-wider flex items-center justify-center gap-2 border border-red-500/50">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                            Аварийный останов (E-STOP)
-                        </button>
                     </div>
 
                 </div>

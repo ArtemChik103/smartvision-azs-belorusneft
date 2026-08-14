@@ -188,19 +188,6 @@ body {
     transform: scale(0.97);
 }
 
-/* E-STOP Button */
-.estop-button {
-    background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
-    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-}
-.estop-button:hover {
-    background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%);
-    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-}
-.estop-button:active {
-    transform: translateY(2px) scale(0.98);
-}
-
 /* Custom Sliders */
 input[type=range] {
     -webkit-appearance: none;
@@ -265,18 +252,7 @@ input[type=range]::-webkit-slider-thumb:hover {
     font-family: 'Inter', sans-serif;
 }
 
-/* Alarm Pulse Animation */
-@keyframes alarmPulse {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-    }
-    50% {
-        box-shadow: 0 0 25px 8px rgba(239, 68, 68, 0.9);
-    }
-}
-.alarm-pulse-border {
-    animation: alarmPulse 1.2s infinite;
-}
+
 
 /* ========================================================================= */
 /* Print Styles for PDF / A4 Report Export                                   */

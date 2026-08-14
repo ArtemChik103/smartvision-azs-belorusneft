@@ -502,9 +502,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         ws.onopen = () => {
             console.log('Connected to SmartVision Telemetry Stream.');
-            document.getElementById('wsStatusBadge')?.classList.remove('bg-red-500');
-            document.getElementById('wsStatusBadge')?.classList.add('bg-green-500');
-            document.getElementById('wsStatusText').textContent = 'ONLINE';
             refreshVideoStream();
         };
 
@@ -519,9 +516,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         ws.onclose = () => {
             console.warn('WebSocket disconnected. Retrying in 2s...');
-            document.getElementById('wsStatusBadge')?.classList.remove('bg-green-500');
-            document.getElementById('wsStatusBadge')?.classList.add('bg-red-500');
-            document.getElementById('wsStatusText').textContent = 'RECONNECTING...';
             clearTimeout(reconnectTimer);
             reconnectTimer = setTimeout(connectWebSocket, 2000);
         };
@@ -784,33 +778,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const estopBtn = document.getElementById('estopButton');
-    if (estopBtn) {
-        estopBtn.addEventListener('click', async () => {
-            try {
-                await fetch('/api/emergency-stop', { method: 'POST' });
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ command: 'EMERGENCY_STOP' }));
-                }
-            } catch (e) {
-                console.error('Failed to trigger E-STOP:', e);
-            }
-        });
-    }
 
-    const resetAlarmBtn = document.getElementById('resetAlarmBtn');
-    if (resetAlarmBtn) {
-        resetAlarmBtn.addEventListener('click', async () => {
-            try {
-                await fetch('/api/reset-alarm', { method: 'POST' });
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ command: 'RESET_ALARM' }));
-                }
-            } catch (e) {
-                console.error('Failed to reset alarm:', e);
-            }
-        });
-    }
 
     // 12. Audit Logs Fetch & Filter
     async function loadAuditLogs() {
