@@ -48,14 +48,23 @@ smartvision_azs/
 ## Математические модели и формулы
 
 ### 1. Алгоритм защиты от обрыва шланга
-- **Условие тревоги:**
-  $$\text{nozzle\_in\_tank} = \text{True} \quad \wedge \quad \Delta D > 15\text{ px за } 300\text{ мс}$$
-- **Реакция:** мгновенный сигнал блокировки насоса (`pump_locked = True`), активация двухтональной сирены и запись инцидента в базу данных.
+- **Условие срабатывания аварийной блокировки (E-STOP):**
 
-### 2. Формула годового ROI
-$$\text{Экономия}_{\text{обрывы}} = N_{\text{АЗС}} \times N_{\text{инцидентов/год}} \times C_{\text{ущерб}}$$
-$$\text{Доход}_{\text{ритейл}} = N_{\text{АЗС}} \times \text{Трафик}_{\text{сутки}} \times 365 \times \Delta_{\text{чек ритейла}} \times \text{Маржа}$$
-$$\text{Срок окупаемости (мес)} = \frac{\text{Capex}}{\text{Совокупный годовой эффект} / 12}$$
+$$\text{NozzleInTank} = \text{True} \quad \land \quad \Delta D \ge 15\,\text{px} \quad (\Delta t = 300\,\text{ms})$$
+
+- **Реакция:** мгновенный аппаратный сигнал отключения насоса (`pump_locked = True`), активация двухтональной сирены и запись инцидента безопасности в базу данных.
+
+### 2. Формула расчета экономической эффективности (ROI)
+
+$$\text{Savings}_{\text{hose}} = N_{\text{stations}} \times N_{\text{incidents/year}} \times C_{\text{damage}}$$
+
+$$\text{Profit}_{\text{retail}} = N_{\text{stations}} \times \text{Traffic}_{\text{daily}} \times 365 \times \Delta_{\text{check}} \times \text{Margin}$$
+
+$$\text{Payback (months)} = \frac{\text{Capex}}{(\text{Savings}_{\text{hose}} + \text{Profit}_{\text{retail}} - \text{Opex}) / 12}$$
+
+* **$\text{Savings}_{\text{hose}}$** — годовая экономия на предотвращении повреждений ТРК и разрывов шлангов.
+* **$\text{Profit}_{\text{retail}}$** — дополнительная маржинальная прибыль кафе и магазина АЗС за счет ускорения Zero-Click обслуживания (сокращение времени у колонки на $-78\%$).
+* **$\text{Payback}$** — срок окупаемости инвестиций в месяцах.
 
 ---
 
@@ -84,7 +93,7 @@ python main.py
 
 | Водитель | Госномер | Автомобиль | Топливо | Баланс | Режим |
 |---|---|---|---|---|---|
-| Иванов И. И. | `7777 AB-7` | Volkswagen Passat B8 | АИ-95 | 150.00 BYN | Drive&Pay (Zero-Click) |
+| Иванов И. И. | `7777 AB-7` | Volkswagen Passat B8 (2.0 TSI) | АИ-95 | 150.00 BYN | Drive&Pay (Zero-Click) |
 | Петров П. П. | `1234 IE-7` | Geely Tugella 2.0T | АИ-95 | 95.50 BYN | Drive&Pay |
 | Гость | `5678 MH-7` | Lada Vesta SW Cross | АИ-92 | 0.00 BYN | Оплата на кассе / терминал |
 
@@ -98,6 +107,6 @@ python main.py
 - `POST /api/emergency-stop` — ручная блокировка ТРК (кнопка E-STOP).
 - `POST /api/reset-alarm` — сброс состояния аварии и разблокировка насоса.
 - `POST /api/roi/calculate` — расчет окупаемости по входным параметрам сети.
-- `POST /api/simulator/control?action=scenario_1|scenario_2|scenario_3` — переключение сценария симуляции.
+- `POST /api/simulator/control?action=scenario_1|scenario_2|scenario_3|seek` — управление симуляцией и перемотка.
 - `GET /api/video/feed` — видеопоток MJPEG для мониторинга.
 - `WS /ws/telemetry` — двусторонний WebSocket телеметрии и координат Bounding Boxes.
