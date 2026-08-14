@@ -584,10 +584,10 @@ document.addEventListener('DOMContentLoaded', () => {
             VEHICLE_APPROACHING: { text: 'ЗАЕЗД Т/С', class: 'bg-blue-900/60 text-blue-300 border-blue-600' },
             PLATE_IDENTIFIED: { text: 'НОМЕР РАСПОЗНАН', class: 'bg-amber-900/60 text-amber-300 border-amber-500' },
             NOZZLE_INSERTED: { text: 'ПИСТОЛЕТ В БАКЕ', class: 'bg-teal-900/60 text-teal-300 border-teal-500' },
-            FUELING: { text: 'ИДЕТ НАЛИВ ТОПЛИВА', class: 'bg-green-900/80 text-green-300 border-green-500 animate-pulse' },
+            FUELING: { text: 'ИДЕТ НАЛИВ ТОПЛИВА', class: 'bg-green-900/80 text-green-300 border-green-500' },
             NOZZLE_RETURNED: { text: 'ПИСТОЛЕТ ВОЗВРАЩЕН', class: 'bg-indigo-900/60 text-indigo-300 border-indigo-500' },
             SESSION_COMPLETE: { text: 'ЗАПРАВКА ЗАВЕРШЕНА', class: 'bg-emerald-900/80 text-emerald-300 border-emerald-400' },
-            ALARM_LOCKDOWN: { text: 'ТРЕВОГА: НАСОС ЗАБЛОКИРОВАН', class: 'bg-red-700 text-white border-red-500 animate-bounce' },
+            ALARM_LOCKDOWN: { text: 'ТРЕВОГА: НАСОС ЗАБЛОКИРОВАН', class: 'bg-red-700 text-white border-red-500 font-bold' },
         };
 
         const conf = stateConfig[state] || stateConfig['IDLE'];
@@ -919,8 +919,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // Search and Filter Listeners
     const auditSearch = document.getElementById('auditSearchInput');
     const auditFilter = document.getElementById('auditSeverityFilter');
+    const btnClearAuditLogs = document.getElementById('btnClearAuditLogs');
+
     if (auditSearch) auditSearch.addEventListener('input', renderFilteredAuditLogs);
     if (auditFilter) auditFilter.addEventListener('change', renderFilteredAuditLogs);
+    if (btnClearAuditLogs) {
+        btnClearAuditLogs.addEventListener('click', async () => {
+            if (!confirm('Очистить все записи журнала сессий и инцидентов?')) return;
+            try {
+                const res = await fetch('/api/audit/clear', { method: 'POST' });
+                if (res.ok) {
+                    cachedSessions = [];
+                    cachedIncidents = [];
+                    renderFilteredAuditLogs();
+                }
+            } catch (err) {
+                console.error('Failed to clear audit logs:', err);
+            }
+        });
+    }
 
     // Initial WebSocket Connection
     connectWebSocket();

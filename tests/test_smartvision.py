@@ -168,6 +168,11 @@ async def test_api_endpoints():
         assert res_inc.status_code == 200
         assert isinstance(res_inc.json(), list)
 
+        # Clear Audit Logs
+        res_clear = await ac.post("/api/audit/clear")
+        assert res_clear.status_code == 200
+        assert res_clear.json()["success"] is True
+
         # ROI calculate
         res_roi = await ac.post(
             "/api/roi/calculate",

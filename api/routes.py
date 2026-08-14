@@ -10,12 +10,13 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, delete
 
 from config import settings, SNAPSHOTS_DIR
 from database.db_session import get_db
 from database.models import User, Vehicle, FuelingSession, IncidentLog
 from core.roi_calculator import ROICalculator, ROIParams, ROIFinancialSummary
+from core.fsm import FuelingState
 
 router = APIRouter(prefix="/api", tags=["SmartVision API"])
 
@@ -129,6 +130,15 @@ async def get_incidents(
         }
         for inc in incidents
     ]
+
+
+@router.post("/audit/clear")
+async def clear_audit_logs(db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
+    """Clear all fueling sessions and incident logs from database."""
+    await db.execute(delete(FuelingSession))
+    await db.execute(delete(IncidentLog))
+    await db.commit()
+    return {"success": True, "message": "Журнал транзакций и инцидентов успешно очищен."}
 
 
 @router.post("/emergency-stop")
