@@ -90,63 +90,87 @@
                     Программный комплекс компьютерного зрения, высокоскоростной детекции регистрационных знаков и превентивной защиты от обрыва шлангов ТРК. Развернут на базе системного движка Microsoft Edge WebView2.
                 </p>
 
-                <!-- Download Card Box -->
-                <div class="mt-10 max-w-xl mx-auto bg-[#0F172A] border border-bn-border p-6 rounded-2xl shadow-xl">
-                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pb-5 border-b border-slate-800 text-left">
+                <!-- Download Options Grid -->
+                <div class="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto text-left">
+                    
+                    <!-- Option 1: Installer .EXE (Recommended) -->
+                    <div class="bg-[#0F172A] border-2 border-bn-green p-6 rounded-2xl shadow-xl flex flex-col justify-between relative overflow-hidden">
+                        <div class="absolute top-0 right-0 bg-bn-green text-white text-[10px] font-extrabold uppercase px-3 py-1 rounded-bl-xl tracking-wider">
+                            Рекомендуется
+                        </div>
                         <div>
-                            <div class="text-lg font-bold text-white flex items-center">
-                                <svg class="w-5 h-5 mr-2 text-bn-yellow" fill="currentColor" viewBox="0 0 24 24">
+                            <div class="flex items-center space-x-2 text-white font-bold text-lg mb-1">
+                                <svg class="w-6 h-6 text-bn-yellow" fill="currentColor" viewBox="0 0 24 24">
                                     <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.95-1.801"/>
                                 </svg>
-                                Windows x64 (10 / 11 / Server)
+                                <span>Установщик Windows (.EXE)</span>
                             </div>
-                            <div class="text-xs text-slate-400 mt-0.5" id="pkgMetaText">
-                                Версия 1.2.0-LTS | Портативный дистрибутив | 64-bit
+                            <div class="text-xs text-slate-400 mb-3">
+                                Версия 1.2.0-LTS | Автоустановка и ярлыки | 10.3 МБ
+                            </div>
+                            <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                                Графический мастер установки для операторов АЗС. Автоматически создает ярлыки на Рабочем столе и в меню «Пуск», настраивает рабочую директорию.
+                            </p>
+                        </div>
+
+                        <div>
+                            <a href="https://github.com/ArtemChik103/smartvision-azs-belorusneft/releases/download/v1.2.0/SmartVision-AZS-Setup.exe" class="w-full bg-bn-green hover:bg-bn-darkgreen text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md hover:shadow-bn-green/30 flex items-center justify-center text-sm mb-3">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                                Скачать установщик (.exe)
+                            </a>
+                            <div class="text-[11px] text-slate-400 space-y-1">
+                                <div class="flex justify-between items-center">
+                                    <span>SHA-256 (Setup.exe):</span>
+                                    <button onclick="navigator.clipboard.writeText('79c61ad8f862abb5de5d0ba2e0061f8126d41da6d6eb14518957a3d5a67cd9a4'); alert('SHA-256 скопирован в буфер');" class="text-bn-lightgreen hover:underline">Скопировать</button>
+                                </div>
+                                <div class="bg-slate-950 p-1.5 rounded border border-slate-800 text-slate-400 code-block break-all text-[10px]">
+                                    79c61ad8f862abb5de5d0ba2e0061f8126d41da6d6eb14518957a3d5a67cd9a4
+                                </div>
                             </div>
                         </div>
-                        <a href="https://github.com/ArtemChik103/smartvision-azs-belorusneft/releases/download/v1.2.0/SmartVision-AZS-Windows-x64.zip" class="w-full sm:w-auto bg-bn-green hover:bg-bn-darkgreen text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md hover:shadow-bn-green/20 flex items-center justify-center shrink-0">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                            </svg>
-                            Скачать дистрибутив
-                        </a>
                     </div>
 
-                    <!-- Checksum & Details -->
-                    <div class="pt-4 text-left space-y-2 text-xs">
-                        <div class="flex items-center justify-between text-slate-400">
-                            <span>Контрольная сумма SHA-256:</span>
-                            <button id="btnCopySha" onclick="navigator.clipboard.writeText(document.getElementById('sha256Display').textContent.trim()); alert('SHA-256 скопирован в буфер');" class="text-bn-lightgreen hover:underline">
-                                Скопировать
-                            </button>
+                    <!-- Option 2: Portable .ZIP -->
+                    <div class="bg-[#0F172A] border border-bn-border p-6 rounded-2xl shadow-xl flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center space-x-2 text-white font-bold text-lg mb-1">
+                                <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
+                                </svg>
+                                <span>Портативная версия (.ZIP)</span>
+                            </div>
+                            <div class="text-xs text-slate-400 mb-3">
+                                Версия 1.2.0-LTS | Без установки | 0.12 МБ
+                            </div>
+                            <p class="text-xs text-slate-300 leading-relaxed mb-4">
+                                Переносимый архив для запуска без прав администратора. Достаточно распаковать в любую папку и запустить <code class="text-slate-200">Запуск_SmartVision_AZS.bat</code>.
+                            </p>
                         </div>
-                        <div id="sha256Display" class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-slate-300 code-block break-all text-[11px]">
-                            9b5a19165cc90ecb456baa526b87201d2298c6f6986b3fd7e5a31ea7b82b29a9
-                        </div>
-                        <div class="text-slate-500 text-[11px] pt-1">
-                            Включает предварительно настроенную среду исполнения, скрипт запуска и встроенную базу данных SQLite WAL.
+
+                        <div>
+                            <a href="https://github.com/ArtemChik103/smartvision-azs-belorusneft/releases/download/v1.2.0/SmartVision-AZS-Windows-x64.zip" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 px-4 rounded-xl transition-all border border-slate-700 flex items-center justify-center text-sm mb-3">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                                Скачать архив (.zip)
+                            </a>
+                            <div class="text-[11px] text-slate-400 space-y-1">
+                                <div class="flex justify-between items-center">
+                                    <span>SHA-256 (Portable.zip):</span>
+                                    <button onclick="navigator.clipboard.writeText('9b5a19165cc90ecb456baa526b87201d2298c6f6986b3fd7e5a31ea7b82b29a9'); alert('SHA-256 скопирован в буфер');" class="text-bn-lightgreen hover:underline">Скопировать</button>
+                                </div>
+                                <div class="bg-slate-950 p-1.5 rounded border border-slate-800 text-slate-400 code-block break-all text-[10px]">
+                                    9b5a19165cc90ecb456baa526b87201d2298c6f6986b3fd7e5a31ea7b82b29a9
+                                </div>
+                            </div>
                         </div>
                     </div>
+
                 </div>
             </div>
         </section>
-
-        <script>
-            // Fetch live package metadata if available
-            fetch('/api/download/info')
-                .then(r => r.json())
-                .then(d => {
-                    if (d.sha256) {
-                        const el = document.getElementById('sha256Display');
-                        if (el) el.textContent = d.sha256;
-                    }
-                    if (d.size_mb) {
-                        const meta = document.getElementById('pkgMetaText');
-                        if (meta) meta.textContent = `Версия ${d.version || '1.2.0-LTS'} | Портативный дистрибутив (${d.size_mb} МБ) | 64-bit`;
-                    }
-                })
-                .catch(() => {});
-        </script>
 
         <!-- Advantages Grid -->
         <section class="py-14 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto">

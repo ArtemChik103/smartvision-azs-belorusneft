@@ -100,22 +100,27 @@ smartvision-azs-belorusneft/
 
 ---
 
-## Запуск десктоп-приложения
+## Установка и запуск десктоп-приложения
 
-### Вариант 1. Запуск из исходного кода
+### Вариант 1. Загрузка готового установщика (.EXE)
+Скачайте графический мастер установки: **[SmartVision-AZS-Setup.exe](https://github.com/ArtemChik103/smartvision-azs-belorusneft/releases/download/v1.2.0/SmartVision-AZS-Setup.exe)**.
+Мастер автоматически распакует комплекс, создаст ярлыки на Рабочем столе и в меню «Пуск».
+
+### Вариант 2. Портативная версия (.ZIP)
+Скачайте архив **[SmartVision-AZS-Windows-x64.zip](https://github.com/ArtemChik103/smartvision-azs-belorusneft/releases/download/v1.2.0/SmartVision-AZS-Windows-x64.zip)**, распакуйте в любую папку и запустите `Запуск_SmartVision_AZS.bat`.
+
+### Вариант 3. Запуск из исходного кода
 ```bash
 # 1. Установка зависимостей
 pip install -r requirements.txt
 
-# 2. Запуск нативного окна
+# 2. Запуск нативного окна оператора
 python desktop_app.py
 ```
 
-### Вариант 2. Сборка переносимого пакета
-```bash
-python tools/build_desktop.py
-```
-Сформированный архив будет доступен по пути: `dist/SmartVision-AZS-v1.2.0-Windows-x64.zip`.
+### Сборка дистрибутивов из исходников
+* Сборка портативного архива: `python tools/build_desktop.py`
+* Сборка исполняемого установщика: `python tools/build_installer_exe.py`
 
 ---
 

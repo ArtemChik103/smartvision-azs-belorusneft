@@ -231,6 +231,11 @@ async def test_api_endpoints():
         assert "version" in info_data
         assert "sha256" in info_data
 
+        # Desktop installer endpoint - 307 CDN Redirect
+        res_inst_redir = await ac.get("/api/download/installer")
+        assert res_inst_redir.status_code == 307
+        assert "SmartVision-AZS-Setup.exe" in res_inst_redir.headers["location"]
+
         # Desktop download package endpoint - 307 CDN Redirect
         res_pkg_redir = await ac.get("/api/download/windows")
         assert res_pkg_redir.status_code == 307
