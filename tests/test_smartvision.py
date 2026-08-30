@@ -218,3 +218,21 @@ async def test_api_endpoints():
         assert res_excel_pilot.status_code == 200
         assert "spreadsheetml" in res_excel_pilot.headers["content-type"]
         assert len(res_excel_pilot.content) > 1000
+
+        # Desktop download landing page
+        res_dl = await ac.get("/download")
+        assert res_dl.status_code == 200
+        assert "Десктоп-приложение" in res_dl.text
+
+        # Desktop download info endpoint
+        res_info = await ac.get("/api/download/info")
+        assert res_info.status_code == 200
+        info_data = res_info.json()
+        assert "version" in info_data
+        assert "sha256" in info_data
+
+        # Desktop download package endpoint
+        res_pkg = await ac.get("/api/download/windows")
+        assert res_pkg.status_code == 200
+        assert res_pkg.headers["content-type"] == "application/zip"
+        assert len(res_pkg.content) > 5000
