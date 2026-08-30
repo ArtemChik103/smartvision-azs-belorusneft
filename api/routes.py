@@ -333,8 +333,8 @@ async def get_users(db: AsyncSession = Depends(get_db)) -> List[Dict[str, Any]]:
     ]
 
 
-GITHUB_PORTABLE_URL = "https://github.com/ArtemChik103/smartvision-azs-belorusneft/releases/download/v1.2.0/SmartVision-AZS-Windows-x64.zip"
-GITHUB_INSTALLER_URL = "https://github.com/ArtemChik103/smartvision-azs-belorusneft/releases/download/v1.2.0/SmartVision-AZS-Setup.exe"
+GITHUB_PORTABLE_URL = "https://github.com/ArtemChik103/smartvision-azs-belorusneft/releases/download/v1.2.0/SmartVision-AZS-v1.2.0-Windows-x64.zip"
+GITHUB_INSTALLER_URL = "https://github.com/ArtemChik103/smartvision-azs-belorusneft/releases/download/v1.2.0/SmartVision-AZS-v1.2.0-Setup.exe"
 
 
 @router.get("/download/installer")
