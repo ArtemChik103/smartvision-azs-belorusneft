@@ -231,8 +231,13 @@ async def test_api_endpoints():
         assert "version" in info_data
         assert "sha256" in info_data
 
-        # Desktop download package endpoint
-        res_pkg = await ac.get("/api/download/windows")
+        # Desktop download package endpoint - 307 CDN Redirect
+        res_pkg_redir = await ac.get("/api/download/windows")
+        assert res_pkg_redir.status_code == 307
+        assert "github.com" in res_pkg_redir.headers["location"]
+
+        # Desktop download package endpoint - Direct Local Fallback
+        res_pkg = await ac.get("/api/download/windows?direct=true")
         assert res_pkg.status_code == 200
         assert res_pkg.headers["content-type"] == "application/zip"
         assert len(res_pkg.content) > 5000

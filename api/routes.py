@@ -8,7 +8,7 @@ import asyncio
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.responses import StreamingResponse, FileResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, delete
 
@@ -333,9 +333,15 @@ async def get_users(db: AsyncSession = Depends(get_db)) -> List[Dict[str, Any]]:
     ]
 
 
+GITHUB_RELEASE_URL = "https://github.com/ArtemChik103/smartvision-azs-belorusneft/releases/download/v1.2.0/SmartVision-AZS-Windows-x64.zip"
+
+
 @router.get("/download/windows")
-async def download_windows_package():
-    """Download standalone portable desktop package for Windows."""
+async def download_windows_package(direct: bool = False):
+    """Download standalone portable desktop package via high-speed GitHub CDN or local fallback."""
+    if not direct:
+        return RedirectResponse(url=GITHUB_RELEASE_URL, status_code=307)
+
     from tools.build_desktop import create_portable_package, DIST_DIR
     zip_path = DIST_DIR / "SmartVision-AZS-Windows-x64.zip"
     if not zip_path.exists():
