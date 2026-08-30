@@ -1,0 +1,83 @@
+name: Build & Publish Desktop Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag Name (e.g. v1.2.0)'
+        required: true
+        default: 'v1.2.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build Windows x64 Desktop Client & Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller pytest pytest-asyncio httpx requests openpyxl
+
+      - name: Run Quality & Automated Test Suite
+        run: |
+          pytest tests/test_smartvision.py -v
+
+      - name: Build Standalone Binary (PyInstaller onedir)
+        run: |
+          python tools/build_compiled_app.py
+
+      - name: Purge Bloat & Package Portable Archive (.ZIP)
+        run: |
+          python tools/package_release.py
+
+      - name: Build Standalone Windows Installer (.EXE)
+        run: |
+          python tools/build_installer_exe.py
+
+      - name: Compute SHA-256 Checksums
+        shell: pwsh
+        run: |
+          Get-FileHash dist/SmartVision-AZS-v1.2.0-Setup.exe -Algorithm SHA256 | Format-List
+          Get-FileHash dist/SmartVision-AZS-v1.2.0-Windows-x64.zip -Algorithm SHA256 | Format-List
+
+      - name: Upload Binaries to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
+          name: SmartVision AZS ${{ github.event.inputs.tag_name || github.ref_name }}
+          body: |
+            ### 🚗 SmartVision AZS — Официальный релиз десктоп-клиента
+
+            Автономный комплекс компьютерного зрения, безопасности и безакцептной оплаты для сети АЗС «Белоруснефть» (Windows x64).
+
+            #### 📦 Файлы дистрибутива:
+            * **`SmartVision-AZS-v1.2.0-Setup.exe`** — графический мастер установки Windows (ярлык на рабочий стол и меню «Пуск»).
+            * **`SmartVision-AZS-v1.2.0-Windows-x64.zip`** — портативная сборка без установки. Распакуйте и запустите `SmartVision-AZS.exe`.
+
+            #### 🔒 Безопасность и автономность:
+            * Локальный запуск без зависимости от интернета.
+            * Аппаратное ускорение Microsoft Edge WebView2 (60 FPS).
+            * База данных SQLite в режиме Write-Ahead Logging (WAL).
+          files: |
+            dist/SmartVision-AZS-v1.2.0-Setup.exe
+            dist/SmartVision-AZS-v1.2.0-Windows-x64.zip
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
