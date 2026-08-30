@@ -9,7 +9,7 @@ color: #F8FAFC
 style: |
   section {
     font-family: 'Segoe UI', 'Inter', -apple-system, sans-serif;
-    padding: 28px 44px;
+    padding: 30px 48px;
     font-size: 18px;
     background-color: #0B1120;
     color: #F8FAFC;
@@ -19,7 +19,7 @@ style: |
     color: #FFFFFF;
     font-size: 1.85rem;
     font-weight: 800;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.2rem;
     line-height: 1.2;
   }
   h2 {
@@ -31,23 +31,23 @@ style: |
   }
   h3 {
     color: #00A84D;
-    font-size: 0.98rem;
+    font-size: 0.95rem;
     font-weight: 700;
     margin-top: 0;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.2rem;
   }
   .badge {
     display: inline-block;
-    padding: 3px 10px;
+    padding: 4px 12px;
     border-radius: 6px;
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     background: rgba(0, 168, 77, 0.15);
     color: #00A84D;
     border: 1px solid rgba(0, 168, 77, 0.35);
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.5rem;
   }
   .badge-gold {
     background: rgba(255, 204, 0, 0.12);
@@ -71,7 +71,7 @@ style: |
   }
   .grid-split {
     display: grid;
-    grid-template-columns: 46% 54%;
+    grid-template-columns: 45% 55%;
     gap: 16px;
     align-items: center;
   }
@@ -147,34 +147,71 @@ style: |
     border-bottom: 1px solid #334155;
     color: #CBD5E1;
   }
+  /* Architecture Diagram Styles */
+  .arch-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 10px;
+  }
+  .arch-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .arch-node {
+    background: #1E293B;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 10px 14px;
+    flex: 1;
+    text-align: center;
+  }
+  .arch-node-main {
+    background: #132338;
+    border: 1.5px solid #00A84D;
+    box-shadow: 0 0 12px rgba(0, 168, 77, 0.2);
+  }
+  .arch-node strong {
+    display: block;
+    color: #F8FAFC;
+    font-size: 0.84rem;
+    margin-bottom: 3px;
+  }
+  .arch-node span {
+    display: block;
+    color: #94A3B8;
+    font-size: 0.72rem;
+  }
+  .arch-arrow {
+    color: #00A84D;
+    font-weight: 800;
+    font-size: 1.1rem;
+  }
 ---
 
 <!-- _class: lead -->
 <!-- _paginate: false -->
 
-<div class="badge">Марафон ИТ-стартапов 2026 · Номинация: Цифровая АЗС</div>
-
-# SmartVision AZS
-## Автоматизация ТРК, компьютерное зрение и предиктивная безопасность
-
-<div class="grid-3" style="margin-top: 15px;">
-  <div class="card card-highlight">
-    <div class="stat-number">45 сек</div>
-    <div class="stat-label">Полный цикл заправки вместо 210с (-78%)</div>
-  </div>
-  <div class="card card-highlight">
-    <div class="stat-number">300 мс</div>
-    <div class="stat-label">Аппаратный E-STOP отсечки при риске обрыва</div>
-  </div>
-  <div class="card card-highlight">
-    <div class="stat-number">22.0 млн</div>
-    <div class="stat-label">BYN чистого годового эффекта на сеть</div>
-  </div>
-</div>
+<div class="badge">Марафон ИТ-стартапов 2026 · РУП «ПО «Белоруснефть»</div>
 
 <br>
 
-<p style="font-size: 0.8rem; color: #64748B;">Разработчик проекта · ПО «Белоруснефть» · 2026 год</p>
+# SmartVision AZS
+## Автоматизированный комплекс компьютерного зрения, безопасности и безакцептной оплаты для сети АЗС
+
+<br>
+
+<div style="text-align: center; margin: 0 auto;">
+  <div style="display: inline-block; background: #1E293B; border: 1px solid #334155; padding: 10px 24px; border-radius: 8px;">
+    <p style="margin: 0; font-size: 0.88rem; color: #CBD5E1;"><strong>Номинация:</strong> <span style="color: #00A84D; font-weight: 700;">Цифровая АЗС</span></p>
+  </div>
+</div>
+
+<br><br>
+
+<p style="font-size: 0.82rem; color: #64748B; margin-top: 10px;">Разработчик проекта · Минск, 2026 год</p>
 
 ---
 
@@ -332,40 +369,49 @@ style: |
 
 ---
 
-<div class="badge">Архитектура</div>
+<div class="badge">Архитектура и потоки данных</div>
 
-# Технологический стек и надежность
-## Модульный Edge AI контур для работы на типовых ПК заправочных станций
+# Схема работы контура SmartVision AZS
+## Взаимодействие Edge AI, исполнительных реле ТРК и облачной экосистемы
 
-<div class="grid-3">
-  <div class="card">
-    <h3>Edge AI Vision</h3>
-    <p><strong>YOLOv8 Nano + OpenCV</strong></p>
-    <p>30 FPS на процессорах Intel Core i3/i5 без дорогостоящих дискретных GPU.</p>
+<div class="arch-container">
+  <!-- Tier 1: Input -->
+  <div class="arch-row">
+    <div class="arch-node">
+      <strong>Обзорная IP-камера ТРК</strong>
+      <span>RTSP / 30 FPS / H.264 (Штатная камера)</span>
+    </div>
+    <div class="arch-arrow">➔</div>
+    <div class="arch-node arch-node-main">
+      <strong style="color: #00A84D;">Edge AI Core (YOLOv8 + OpenCV)</strong>
+      <span>Детекция госномеров (OCR > 98%), кузова и пистолета</span>
+    </div>
+    <div class="arch-arrow">➔</div>
+    <div class="arch-node arch-node-main">
+      <strong style="color: #00A84D;">FSM Контроллер состояния</strong>
+      <span>IDLE ➔ IDENTIFIED ➔ FUELING ➔ COMPLETE</span>
+    </div>
   </div>
-  <div class="card">
-    <h3>Backend & Events</h3>
-    <p><strong>FastAPI + SQLite WAL</strong></p>
-    <p>Асинхронная телеметрия по WebSockets (12.5 Гц), устойчивость к сбоям питания.</p>
-  </div>
-  <div class="card">
-    <h3>Клиент оператора</h3>
-    <p><strong>Edge WebView2 (.EXE)</strong></p>
-    <p>Автономный десктоп-клиент в 1 клик, инсталлятор с системными ярлыками.</p>
+
+  <!-- Tier 2: Output split -->
+  <div class="arch-row" style="margin-top: 6px;">
+    <div class="arch-node" style="border-color: #EF4444; background: #24141E;">
+      <strong style="color: #F87171;">Аппаратный E-STOP (< 300мс)</strong>
+      <span>Отсечка электромагнитного клапана ТРК</span>
+    </div>
+    <div class="arch-node" style="border-color: #38BDF8; background: #112233;">
+      <strong style="color: #38BDF8;">Десктоп оператора (WebView2)</strong>
+      <span>Локальная телеметрия по WebSockets 12.5 Гц</span>
+    </div>
+    <div class="arch-node" style="border-color: #FFCC00; background: #262215;">
+      <strong style="color: #FFCC00;">Процессинг Drive&Pay / СКНО</strong>
+      <span>Безакцептное списание и фискальный чек</span>
+    </div>
   </div>
 </div>
 
-<br>
-
-<div class="grid-2">
-  <div class="card card-highlight">
-    <h3>Локальная автономность (Offline Resilience)</h3>
-    <p>При потере связи с облаком станция продолжает налив и защиту от обрыва автономно.</p>
-  </div>
-  <div class="card card-highlight">
-    <h3>Экономия сетевого трафика (< 50 КБ/мин)</h3>
-    <p>Видео обрабатывается локально; в центр передаются только телеметрия и стоп-кадры.</p>
-  </div>
+<div class="card card-highlight" style="margin-top: 14px; padding: 10px 14px;">
+  <p style="color: #E2E8F0; font-size: 0.8rem;"><strong>Автономность станции (Offline Survivability):</strong> При обрыве связи с интернетом налив и система защиты от обрыва продолжают функционировать локально на 100%.</p>
 </div>
 
 ---

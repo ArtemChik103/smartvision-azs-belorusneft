@@ -96,17 +96,30 @@ def build_presentation():
             height=prs.slide_height,
         )
 
-    prs.save(str(SLIDES_PPTX))
+    # Save PPTX with lock fallback
+    saved_pptx = SLIDES_PPTX
+    try:
+        prs.save(str(SLIDES_PPTX))
+    except PermissionError:
+        saved_pptx = PRES_DIR / "SmartVision-AZS-Presentation-latest.pptx"
+        prs.save(str(saved_pptx))
+        print(f"  [WARN] File locked by PowerPoint viewer. Saved to {saved_pptx.name}")
     
-    # Export PDF via PIL
+    # Export PDF via PIL with lock fallback
     from PIL import Image
     pil_imgs = [Image.open(p).convert("RGB") for p in slide_images]
+    saved_pdf = SLIDES_PDF
     if pil_imgs:
-        pil_imgs[0].save(str(SLIDES_PDF), save_all=True, append_images=pil_imgs[1:])
+        try:
+            pil_imgs[0].save(str(SLIDES_PDF), save_all=True, append_images=pil_imgs[1:])
+        except PermissionError:
+            saved_pdf = PRES_DIR / "SmartVision-AZS-Presentation-latest.pdf"
+            pil_imgs[0].save(str(saved_pdf), save_all=True, append_images=pil_imgs[1:])
+            print(f"  [WARN] PDF locked by viewer. Saved to {saved_pdf.name}")
     
     print(f"\n[SUCCESS] Presentation build complete!")
-    print(f"  PPTX: {SLIDES_PPTX} ({round(SLIDES_PPTX.stat().st_size / (1024*1024), 2)} MB)")
-    print(f"  PDF:  {SLIDES_PDF} ({round(SLIDES_PDF.stat().st_size / (1024*1024), 2)} MB)")
+    print(f"  PPTX: {saved_pptx} ({round(saved_pptx.stat().st_size / (1024*1024), 2)} MB)")
+    print(f"  PDF:  {saved_pdf} ({round(saved_pdf.stat().st_size / (1024*1024), 2)} MB)")
     print(f"  HTML: {SLIDES_HTML}")
     return True
 
