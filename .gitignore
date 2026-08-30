@@ -10,3 +10,9 @@ env/
 yolov8n.pt
 data/snapshots/*
 !data/snapshots/.gitkeep
+build/
+*.spec
+dist/SmartVision-AZS/
+dist/SmartVision-AZS-v1.2.0-Windows-x64/
+dist/*.zip
+dist/*.exe

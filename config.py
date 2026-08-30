@@ -5,8 +5,16 @@ Belorusneft Computer Vision & Telemetry System.
 from pathlib import Path
 from pydantic_settings import BaseSettings
 
-BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "data"
+import os
+import sys
+
+if getattr(sys, "frozen", False):
+    BASE_DIR = Path(sys._MEIPASS)
+    DATA_DIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "SmartVision_AZS" / "data"
+else:
+    BASE_DIR = Path(__file__).resolve().parent
+    DATA_DIR = BASE_DIR / "data"
+
 DATA_DIR.mkdir(exist_ok=True, parents=True)
 SNAPSHOTS_DIR = DATA_DIR / "snapshots"
 SNAPSHOTS_DIR.mkdir(exist_ok=True, parents=True)

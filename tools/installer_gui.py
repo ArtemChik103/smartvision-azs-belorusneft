@@ -351,67 +351,74 @@ class InstallerApp:
             self.progress_bar["value"] = 10
             target_dir.mkdir(parents=True, exist_ok=True)
 
-            # Source directory (bundle or local workspace)
             base_dir = Path(__file__).resolve().parent.parent
-            include_dirs = ["api", "core", "database", "static", "tools", "vision"]
-            include_files = [
-                "desktop_app.py",
-                "main.py",
-                "config.py",
-                "requirements.txt",
-                "desktop_icon.ico",
-                "README.md",
-            ]
+            if getattr(sys, "frozen", False):
+                payload_dir = Path(sys._MEIPASS) / "payload"
+            else:
+                payload_dir = base_dir / "dist" / "SmartVision-AZS"
 
-            total_items = len(include_dirs) + len(include_files)
-            done = 0
-
-            for d in include_dirs:
-                src_d = base_dir / d
-                dst_d = target_dir / d
-                if src_d.exists():
-                    self.progress_lbl.config(text=f"Копирование модуля {d}...")
-                    if dst_d.exists():
-                        shutil.rmtree(dst_d)
-                    shutil.copytree(src_d, dst_d, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
-                done += 1
-                self.progress_bar["value"] = 10 + int((done / total_items) * 60)
-
-            for f in include_files:
-                src_f = base_dir / f
-                dst_f = target_dir / f
-                if src_f.exists():
-                    self.progress_lbl.config(text=f"Копирование файла {f}...")
-                    shutil.copy2(src_f, dst_f)
-                done += 1
-                self.progress_bar["value"] = 10 + int((done / total_items) * 60)
-
-            # Create Launcher Batch
-            bat_path = target_dir / "SmartVision_AZS_Launcher.bat"
-            with open(bat_path, "w", encoding="cp1251") as bf:
-                bf.write(f"@echo off\ncd /d \"{target_dir}\"\npython desktop_app.py\n")
-
+            target_exe = target_dir / "SmartVision-AZS.exe"
             icon_path = target_dir / "desktop_icon.ico"
 
+            if payload_dir.exists() and (payload_dir / "SmartVision-AZS.exe").exists():
+                self.progress_lbl.config(text="Установка бинарных файлов и библиотек...")
+                self.progress_bar["value"] = 30
+                for item in payload_dir.iterdir():
+                    dst = target_dir / item.name
+                    if item.is_dir():
+                        if dst.exists():
+                            shutil.rmtree(dst)
+                        shutil.copytree(item, dst)
+                    else:
+                        shutil.copy2(item, dst)
+                self.progress_bar["value"] = 80
+            else:
+                # Fallback: copy project files
+                include_dirs = ["api", "core", "database", "static", "tools", "vision"]
+                include_files = ["desktop_app.py", "main.py", "config.py", "requirements.txt", "desktop_icon.ico", "README.md"]
+                total = len(include_dirs) + len(include_files)
+                done = 0
+                for d in include_dirs:
+                    src_d = base_dir / d
+                    dst_d = target_dir / d
+                    if src_d.exists():
+                        if dst_d.exists():
+                            shutil.rmtree(dst_d)
+                        shutil.copytree(src_d, dst_d, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+                    done += 1
+                    self.progress_bar["value"] = 20 + int((done / total) * 60)
+                for f in include_files:
+                    src_f = base_dir / f
+                    if src_f.exists():
+                        shutil.copy2(src_f, target_dir / f)
+
+            # Ensure icon exists in target_dir
+            if not icon_path.exists():
+                src_ico = base_dir / "desktop_icon.ico"
+                if src_ico.exists():
+                    shutil.copy2(src_ico, icon_path)
+
             # Shortcuts
-            self.progress_lbl.config(text="Создание ярлыков Windows...")
-            self.progress_bar["value"] = 85
+            self.progress_lbl.config(text="Создание ярлыков Windows с иконкой...")
+            self.progress_bar["value"] = 90
+
+            launch_target = target_exe if target_exe.exists() else (target_dir / "desktop_app.py")
 
             if self.create_desktop_shortcut.get():
                 desktop = Path(os.environ.get("USERPROFILE", "C:")) / "Desktop"
                 if desktop.exists():
                     lnk = desktop / "SmartVision AZS (Белоруснефть).lnk"
-                    self._create_shortcut(bat_path, lnk, icon_path, f"{APP_NAME} — {APP_VENDOR}")
+                    self._create_shortcut(launch_target, lnk, icon_path, f"{APP_NAME} — {APP_VENDOR}")
 
             if self.create_start_menu.get():
                 start_menu = Path(os.environ.get("APPDATA", "C:")) / "Microsoft" / "Windows" / "Start Menu" / "Programs"
                 if start_menu.exists():
                     lnk = start_menu / "SmartVision AZS.lnk"
-                    self._create_shortcut(bat_path, lnk, icon_path, f"{APP_NAME} — {APP_VENDOR}")
+                    self._create_shortcut(launch_target, lnk, icon_path, f"{APP_NAME} — {APP_VENDOR}")
 
             self.progress_bar["value"] = 100
             self.progress_lbl.config(text="Завершено.")
-            self.root.after(500, lambda: self._show_step(3))
+            self.root.after(400, lambda: self._show_step(3))
 
         except Exception as e:
             messagebox.showerror("Ошибка установки", f"Не удалось выполнить установку:\n{e}")
@@ -420,9 +427,13 @@ class InstallerApp:
     def _finish(self):
         if self.launch_after.get():
             target_dir = Path(self.install_dir.get())
-            bat_path = target_dir / "SmartVision_AZS_Launcher.bat"
-            if bat_path.exists():
-                subprocess.Popen(["cmd.exe", "/c", str(bat_path)], cwd=str(target_dir), creationflags=subprocess.CREATE_NEW_CONSOLE)
+            target_exe = target_dir / "SmartVision-AZS.exe"
+            if target_exe.exists():
+                subprocess.Popen([str(target_exe)], cwd=str(target_dir))
+            else:
+                bat_path = target_dir / "Запуск_SmartVision_AZS.bat"
+                if bat_path.exists():
+                    subprocess.Popen(["cmd.exe", "/c", str(bat_path)], cwd=str(target_dir))
         self.root.destroy()
 
 
