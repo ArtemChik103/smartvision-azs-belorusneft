@@ -331,16 +331,21 @@ class InstallerApp:
     def _create_shortcut(self, target_path: Path, shortcut_path: Path, icon_path: Path, description: str):
         """Create Windows shortcut (.lnk) using PowerShell WScript.Shell."""
         try:
+            target_str = str(target_path).replace("'", "''")
+            shortcut_str = str(shortcut_path).replace("'", "''")
+            workdir_str = str(target_path.parent).replace("'", "''")
+            icon_str = str(target_path).replace("'", "''") if target_path.suffix.lower() == ".exe" else str(icon_path).replace("'", "''")
+
             ps_cmd = (
-                f'$ws = New-Object -ComObject WScript.Shell; '
-                f'$s = $ws.CreateShortcut("{shortcut_path}"); '
-                f'$s.TargetPath = "{target_path}"; '
-                f'$s.WorkingDirectory = "{target_path.parent}"; '
-                f'$s.Description = "{description}"; '
-                f'$s.IconLocation = "{icon_path},0"; '
-                f'$s.Save()'
+                f"$ws = New-Object -ComObject WScript.Shell; "
+                f"$s = $ws.CreateShortcut('{shortcut_str}'); "
+                f"$s.TargetPath = '{target_str}'; "
+                f"$s.WorkingDirectory = '{workdir_str}'; "
+                f"$s.Description = '{description}'; "
+                f"$s.IconLocation = '{icon_str},0'; "
+                f"$s.Save()"
             )
-            subprocess.run(["powershell", "-NoProfile", "-Command", ps_cmd], capture_output=True, check=False)
+            subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", ps_cmd], capture_output=True, check=False)
         except Exception:
             pass
 
@@ -429,15 +434,16 @@ class InstallerApp:
             target_dir = Path(self.install_dir.get())
             target_exe = target_dir / "SmartVision-AZS.exe"
             if target_exe.exists():
-                subprocess.Popen([str(target_exe)], cwd=str(target_dir))
-            else:
-                bat_path = target_dir / "Запуск_SmartVision_AZS.bat"
-                if bat_path.exists():
-                    subprocess.Popen(["cmd.exe", "/c", str(bat_path)], cwd=str(target_dir))
+                flags = 0
+                if sys.platform == "win32":
+                    flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+                subprocess.Popen([str(target_exe)], cwd=str(target_dir), creationflags=flags)
         self.root.destroy()
 
 
 def main():
+    import multiprocessing
+    multiprocessing.freeze_support()
     root = tk.Tk()
     app = InstallerApp(root)
     root.mainloop()
