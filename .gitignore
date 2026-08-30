@@ -16,3 +16,4 @@ dist/SmartVision-AZS/
 dist/SmartVision-AZS-v1.2.0-Windows-x64/
 dist/*.zip
 dist/*.exe
+~$*
