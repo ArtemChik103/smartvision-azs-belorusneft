@@ -219,10 +219,10 @@ async def test_api_endpoints():
         assert "spreadsheetml" in res_excel_pilot.headers["content-type"]
         assert len(res_excel_pilot.content) > 1000
 
-        # Desktop download landing page
-        res_dl = await ac.get("/download")
-        assert res_dl.status_code == 200
-        assert "Десктоп-приложение" in res_dl.text
+        # Desktop download redirect to GitHub Releases
+        res_dl = await ac.get("/download", follow_redirects=False)
+        assert res_dl.status_code == 307
+        assert "github.com" in res_dl.headers["location"]
 
         # Desktop download info endpoint
         res_info = await ac.get("/api/download/info")

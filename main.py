@@ -14,7 +14,7 @@ import cv2
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 # Ensure root is in sys.path
@@ -221,9 +221,11 @@ async def root():
 
 @app.get("/download")
 async def download_page():
-    """Serve desktop application download landing page."""
-    dl_file = static_dir / "download.html"
-    return FileResponse(str(dl_file))
+    """Redirect to official GitHub Releases page."""
+    return RedirectResponse(
+        url="https://github.com/ArtemChik103/smartvision-azs-belorusneft/releases/latest",
+        status_code=307,
+    )
 
 
 if __name__ == "__main__":

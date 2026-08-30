@@ -1,7 +1,7 @@
 # SmartVision AZS — Белоруснефть
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Render%20Online-00843D?style=for-the-badge&logo=render&logoColor=white)](https://smartvision-azs.onrender.com)
-[![Desktop Client](https://img.shields.io/badge/Desktop%20App-Windows%20x64-0F172A?style=for-the-badge&logo=windows&logoColor=white)](https://smartvision-azs.onrender.com/download)
+[![Desktop Client](https://img.shields.io/badge/GitHub%20Release-v1.2.0%20(Setup%20%26%20ZIP)-00843D?style=for-the-badge&logo=github&logoColor=white)](https://github.com/ArtemChik103/smartvision-azs-belorusneft/releases/latest)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org)
 [![OpenCV](https://img.shields.io/badge/OpenCV-Computer%20Vision-5C3EE8?style=for-the-badge&logo=opencv&logoColor=white)](https://opencv.org)
@@ -11,7 +11,7 @@
 > Автоматизация сценариев заправки **Zero-Click Drive&Pay**, интеллектуальное предотвращение обрыва раздаточных шлангов ТРК ($E\text{-STOP} < 300\text{мс}$) и интерактивная финансово-экономическая модель окупаемости (ТЭО).
 
 * **Рабочая веб-демонстрация:** **[https://smartvision-azs.onrender.com](https://smartvision-azs.onrender.com)**
-* **Страница загрузки десктоп-клиента:** **[https://smartvision-azs.onrender.com/download](https://smartvision-azs.onrender.com/download)**
+* **Скачать десктоп-клиент (Setup .EXE / Portable .ZIP):** **[GitHub Releases v1.2.0](https://github.com/ArtemChik103/smartvision-azs-belorusneft/releases/latest)**
 
 ---
 
