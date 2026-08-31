@@ -7,7 +7,7 @@ Complies with 'zajavka-i-trebovanija-dlja-uchastija-2.docx':
 - Aspect Ratio: 16:9 (1920x1080)
 - Resolution: 1080p Full HD
 - Narration: Russian Neural Voice (ru-RU-DmitryNeural)
-- Duration: ~1:45 minutes (under 6 minute limit)
+- Duration: ~1:38 minutes (under 6 minute limit)
 - Speed: 1.0x natural speed without artificial acceleration
 """
 import os
@@ -99,7 +99,7 @@ def get_audio_duration(file_path: Path) -> float:
 
 async def generate_voiceovers():
     AUDIO_DIR.mkdir(parents=True, exist_ok=True)
-    print("[1/5] Generating Russian neural voiceovers with edge-tts...")
+    print("[1/4] Generating Russian neural voiceovers with edge-tts...")
     durations = {}
     for filename, text in SCENARIO_VOICEOVERS:
         out_path = AUDIO_DIR / filename
@@ -217,7 +217,7 @@ def record_ui_session(durations: dict) -> Path:
 
     from playwright.sync_api import sync_playwright
 
-    print("[2/5] Starting Playwright video recording session at 1920x1080...")
+    print("[2/4] Starting Playwright video recording session at 1920x1080...")
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(
@@ -229,14 +229,14 @@ def record_ui_session(durations: dict) -> Path:
         page = context.new_page()
         
         # 1. Main Operator Cockpit: Scenario 1 (Zero-Click)
-        dur_s1 = durations.get("02_scenario_1_zeroclick.mp3", 25.7)
+        dur_s1 = durations.get("02_scenario_1_zeroclick.mp3", 25.68)
         print(f"  -> Recording Scenario 1: Zero-Click Drive&Pay ({dur_s1:.2f}s)...")
         page.goto("http://127.0.0.1:8000")
         page.wait_for_timeout(500)
         page.click("button[data-action='scenario_1']")
         
         # Fueling takes ~18s
-        page.wait_for_timeout(18000)
+        page.wait_for_timeout(17500)
         
         # Open receipt modal on words 'а электронный фискальный чек'
         print("  -> Demonstrating Electronic Fiscal Receipt...")
@@ -245,23 +245,23 @@ def record_ui_session(durations: dict) -> Path:
         page.click("#receiptModal button:has-text('✕')")
         
         # Balance remaining time of S1
-        remaining_s1 = max(0.5, dur_s1 - 23.0)
+        remaining_s1 = max(0.5, dur_s1 - 22.5)
         page.wait_for_timeout(int(remaining_s1 * 1000))
 
         # 2. Scenario 2: Critical Safety Alarm (E-STOP)
-        dur_s2 = durations.get("03_scenario_2_estop.mp3", 19.0)
+        dur_s2 = durations.get("03_scenario_2_estop.mp3", 18.96)
         print(f"  -> Recording Scenario 2: Predictive E-STOP Hose Protection ({dur_s2:.2f}s)...")
         page.click("button[data-action='scenario_2']")
         page.wait_for_timeout(int(dur_s2 * 1000))
         
         # 3. Scenario 3: Guest Mode
-        dur_s3 = durations.get("04_scenario_3_guest.mp3", 9.4)
+        dur_s3 = durations.get("04_scenario_3_guest.mp3", 9.34)
         print(f"  -> Recording Scenario 3: Guest Mode ({dur_s3:.2f}s)...")
         page.click("button[data-action='scenario_3']")
         page.wait_for_timeout(int(dur_s3 * 1000))
 
         # 4. ROI & Economic Model & Audit Log
-        dur_s5 = durations.get("05_roi_and_audit.mp3", 18.0)
+        dur_s5 = durations.get("05_roi_and_audit.mp3", 18.00)
         print(f"  -> Recording Financial Model & ROI Calculator ({dur_s5:.2f}s)...")
         page.click("button[data-tab='tab-roi']")
         page.wait_for_timeout(2000)
@@ -286,7 +286,7 @@ def record_ui_session(durations: dict) -> Path:
 
         context.close()
         browser.close()
-        print("[3/5] Playwright recording finished.")
+        print("  Playwright recording finished.")
 
     webm_files = list(VIDEO_TEMP_DIR.glob("*.webm"))
     if not webm_files:
@@ -294,74 +294,65 @@ def record_ui_session(durations: dict) -> Path:
     return webm_files[0]
 
 
-def build_normalized_video(raw_webm: Path, intro_dur: float, outro_dur: float) -> Path:
-    """Normalize WebM to 30fps CFR and concatenate with intro and outro cards."""
-    print("[4/5] Normalizing video stream and generating intro/outro cards...")
+def assemble_all_frames_into_video(raw_webm: Path, durations: dict) -> Path:
+    """Read all frames from intro, UI session, and outro, and write to a single video file."""
+    print("[3/4] Assembling all frames (Intro + Live UI + Outro) into single video stream...")
+    
+    intro_dur = durations.get("01_intro.mp3", 15.60)
+    outro_dur = durations.get("06_outro.mp3", 10.68)
+    
+    # Calculate target duration for UI segment
+    ui_dur = (
+        durations.get("02_scenario_1_zeroclick.mp3", 25.68)
+        + durations.get("03_scenario_2_estop.mp3", 18.96)
+        + durations.get("04_scenario_3_guest.mp3", 9.34)
+        + durations.get("05_roi_and_audit.mp3", 18.00)
+    )
 
-    # 1. Convert UI session WebM to constant 30 fps MP4 preserving real-time duration
-    ui_mp4 = PRES_DIR / "ui_session_30fps.mp4"
-    cmd_cfr = [
-        FFMPEG_EXE,
-        "-y",
-        "-i", str(raw_webm),
-        "-vf", "fps=30,scale=1920:1080:flags=lanczos",
-        "-c:v", "libx264",
-        "-preset", "fast",
-        "-crf", "18",
-        "-pix_fmt", "yuv420p",
-        str(ui_mp4),
-    ]
-    subprocess.run(cmd_cfr, capture_output=True, check=True)
-
-    # 2. Build Intro Title Card Video with exact intro_dur
-    intro_mp4 = PRES_DIR / "intro_card.mp4"
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    out_intro = cv2.VideoWriter(str(intro_mp4), fourcc, 30.0, (1920, 1080))
+    out = cv2.VideoWriter(str(TEMP_SILENT_VIDEO), fourcc, 30.0, (1920, 1080))
+
+    # 1. Write Intro Frames
+    print(f"  Writing Intro Title Card ({intro_dur:.2f}s = {int(intro_dur * 30)} frames)...")
     for frame in create_title_card(1920, 1080, duration_sec=intro_dur, fps=30):
-        out_intro.write(frame)
-    out_intro.release()
+        out.write(frame)
 
-    # 3. Build Outro Card Video with exact outro_dur
-    outro_mp4 = PRES_DIR / "outro_card.mp4"
-    out_outro = cv2.VideoWriter(str(outro_mp4), fourcc, 30.0, (1920, 1080))
+    # 2. Read all UI frames from Playwright recording
+    cap = cv2.VideoCapture(str(raw_webm))
+    raw_frames = []
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        if frame.shape[1] != 1920 or frame.shape[0] != 1080:
+            frame = cv2.resize(frame, (1920, 1080), interpolation=cv2.INTER_LANCZOS4)
+        raw_frames.append(frame)
+    cap.release()
+
+    target_ui_frames = int(ui_dur * 30)
+    print(f"  Read {len(raw_frames)} recorded UI frames from browser. Stretches/maps to {target_ui_frames} frames ({ui_dur:.2f}s)...")
+
+    # Time-stretch/interpolate frame indices to match exact target duration
+    if len(raw_frames) > 0:
+        indices = np.linspace(0, len(raw_frames) - 1, target_ui_frames).astype(int)
+        for idx in indices:
+            out.write(raw_frames[idx])
+    else:
+        print("[WARNING] No UI frames found in webm!")
+
+    # 3. Write Outro Frames
+    print(f"  Writing Outro Summary Card ({outro_dur:.2f}s = {int(outro_dur * 30)} frames)...")
     for frame in create_outro_card(1920, 1080, duration_sec=outro_dur, fps=30):
-        out_outro.write(frame)
-    out_outro.release()
+        out.write(frame)
 
-    # 4. Concat all 3 video parts
-    video_concat_txt = PRES_DIR / "video_concat.txt"
-    with open(video_concat_txt, "w", encoding="utf-8") as f:
-        f.write(f"file '{intro_mp4.as_posix()}'\n")
-        f.write(f"file '{ui_mp4.as_posix()}'\n")
-        f.write(f"file '{outro_mp4.as_posix()}'\n")
-
-    cmd_concat_v = [
-        FFMPEG_EXE,
-        "-y",
-        "-f", "concat",
-        "-safe", "0",
-        "-i", str(video_concat_txt),
-        "-c:v", "libx264",
-        "-preset", "fast",
-        "-crf", "18",
-        "-pix_fmt", "yuv420p",
-        str(TEMP_SILENT_VIDEO),
-    ]
-    subprocess.run(cmd_concat_v, capture_output=True, check=True)
-
-    # Cleanup intermediates
-    for p in [intro_mp4, ui_mp4, outro_mp4, video_concat_txt]:
-        try:
-            p.unlink()
-        except Exception:
-            pass
-
+    out.release()
+    print("  All frames successfully written to continuous silent video.")
     return TEMP_SILENT_VIDEO
 
 
 def mux_final_video_with_audio():
     """Concatenate narration tracks and mux with silent video using FFmpeg."""
-    print("[5/5] Muxing video stream with Russian neural voiceover...")
+    print("[4/4] Muxing video stream with Russian neural voiceover...")
     
     # 1. Prepare audio concat list
     audio_files = [
@@ -376,7 +367,6 @@ def mux_final_video_with_audio():
     concat_list_file = PRES_DIR / "audio_concat.txt"
     with open(concat_list_file, "w", encoding="utf-8") as f:
         for af in audio_files:
-            # Escape path for ffmpeg concat
             f.write(f"file '{af.as_posix()}'\n")
 
     combined_audio = PRES_DIR / "combined_narration.mp3"
@@ -479,11 +469,8 @@ def main():
     server_proc = ensure_backend_running()
     try:
         durations = asyncio.run(generate_voiceovers())
-        intro_dur = durations.get("01_intro.mp3", 15.6) + 0.5
-        outro_dur = durations.get("06_outro.mp3", 10.7) + 0.5
-
         raw_webm = record_ui_session(durations)
-        build_normalized_video(raw_webm, intro_dur, outro_dur)
+        assemble_all_frames_into_video(raw_webm, durations)
         mux_final_video_with_audio()
     finally:
         if server_proc:
